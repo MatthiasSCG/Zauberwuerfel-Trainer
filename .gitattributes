@@ -1,0 +1,11 @@
+# Zeilenenden im Repository einheitlich als LF
+* text=auto eol=lf
+
+# Binaerdateien unangetastet lassen
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
