@@ -12,18 +12,22 @@ selbstständig gelösten Würfel. Gedacht für erwachsene Einsteiger ohne
 Vorkenntnisse, ohne vorausgesetztes Wissen und ohne bloßes Auswendiglernen
 von Zugfolgen.
 
-**Lösen.** Aus Fotos der sechs Seiten erkennt das Programm den Zustand des
-Würfels und zeigt den Weg zurück in den gelösten Zustand. Wahlweise als
-Lernlösung, bei der jeder Schritt benannt und begründet wird, oder als
-Kurzlösung mit möglichst wenigen Zügen.
+**Lösen.** Das Programm nimmt den Zustand eines verdrehten Würfels auf und zeigt
+den Weg zurück in den gelösten Zustand. Wahlweise als Lernlösung, bei der jeder
+Schritt benannt und begründet wird, oder als Kurzlösung mit möglichst wenigen
+Zügen.
+
+Übertragen wird der Zustand von Hand über das flache Würfelnetz, Feldchen für
+Feldchen. Die Erkennung aus Fotos der sechs Seiten kommt in einer späteren
+Ausbaustufe dazu.
 
 ## Ausbaustufen
 
 | Fassung | Inhalt |
 | ------- | ------------------------------------------------- |
-| 1       | Anfängerverfahren Schicht für Schicht, Löser, dreidimensionale Ansicht |
+| 1       | Anfängerverfahren Schicht für Schicht, Löser, dreidimensionale Ansicht, Eingabe über das Würfelnetz |
 | 2       | CFOP, also Cross, F2L, OLL, PLL                    |
-| 3       | Roux und ZZ, dazu ein Vergleich der Systeme        |
+| 3       | Roux und ZZ, dazu ein Vergleich der Systeme, zuletzt die Zustandserfassung aus Fotos |
 
 ## Technik
 
