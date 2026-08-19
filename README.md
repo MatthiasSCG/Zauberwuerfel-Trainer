@@ -26,7 +26,7 @@ Ausbaustufe dazu.
 | Fassung | Inhalt |
 | ------- | ------------------------------------------------- |
 | 1       | Anfängerverfahren Schicht für Schicht, Löser, dreidimensionale Ansicht, Eingabe über das Würfelnetz |
-| 2       | CFOP, also Cross, F2L, OLL, PLL                    |
+| 2       | CFOP, also Cross, F2L, OLL, PLL, dazu Inspektionszeit und Stoppuhr |
 | 3       | Roux und ZZ, dazu ein Vergleich der Systeme, zuletzt die Zustandserfassung aus Fotos |
 
 ## Technik
