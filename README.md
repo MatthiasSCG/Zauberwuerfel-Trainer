@@ -3,9 +3,10 @@
 Interaktives Lernprogramm für den Zauberwürfel (3×3×3). Läuft vollständig im
 Browser, ohne Installation, ohne Netzverbindung, ohne Konto.
 
-> **Stand:** in Entwicklung. Es gibt noch keine lauffähige Fassung.
+> **Stand:** Ausbaustufe 1 läuft.
+> **[Programm öffnen](https://matthiasscg.github.io/Zauberwuerfel-Trainer/)**
 
-## Was das Programm können wird
+## Was das Programm kann
 
 **Lernen.** Ein geführter Pfad vom ersten Kontakt mit der Notation bis zum
 selbstständig gelösten Würfel. Gedacht für erwachsene Einsteiger ohne
@@ -25,7 +26,7 @@ Ausbaustufe dazu.
 
 | Fassung | Inhalt |
 | ------- | ------------------------------------------------- |
-| 1       | Anfängerverfahren Schicht für Schicht, Löser, dreidimensionale Ansicht, Eingabe über das Würfelnetz |
+| 1       | Anfängerverfahren Schicht für Schicht, Löser, dreidimensionale Ansicht, Einstellungen, Eingabe über das Würfelnetz |
 | 2       | CFOP, also Cross, F2L, OLL, PLL, dazu Inspektionszeit und Stoppuhr |
 | 3       | Roux und ZZ, dazu ein Vergleich der Systeme, zuletzt die Zustandserfassung aus Fotos |
 
@@ -36,7 +37,13 @@ kein Aufruf nach außen, keine Datenübertragung. Fortschritt und Einstellungen
 bleiben im Browser und lassen sich als Datei sichern.
 
 Der Quellcode liegt in `src/` in seiner modularen Entwicklungsform. Die
-ausgelieferte Einzeldatei entsteht daraus durch einen Zusammenführungsschritt.
+ausgelieferte Einzeldatei entsteht daraus durch einen Zusammenführungsschritt
+und steht hier als [index.html](index.html). Wer sie herunterlädt, kann sie
+ohne Netzverbindung im Browser öffnen; sie lädt nichts nach.
+
+Die Lösungssuche läuft in einem nebenläufigen Strang, damit die Oberfläche
+währenddessen bedienbar bleibt. Wo der Browser das nicht zulässt, rechnet das
+Programm stückweise im Hauptstrang weiter.
 
 ## Lizenz
 
