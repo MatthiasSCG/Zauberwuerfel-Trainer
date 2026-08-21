@@ -1,0 +1,2108 @@
+/* Gestaltung des Zauberwuerfel-Trainers, nach Projektmanagement/Konzepte/
+   Design-Konzept.md.
+
+   Diese Datei ist die einzige Quelle der Farbwerte. Sie standen bis zum
+   2026-08-13 zusätzlich als Literale in scripts/farben-pruefen.mjs; das
+   Skript liest sie jetzt von hier. Drei Ablagen desselben Wertes laufen
+   früher oder später auseinander, und dann prüft das Skript etwas anderes,
+   als das Programm zeigt.
+
+   Wer einen Farbwert ändert, ändert ihn hier, und die Prüfstrecke rechnet
+   Kontraste und Farbabstände beim nächsten Lauf neu. */
+
+:root {
+  /* ---------------------------------------------- Farbsystem der Oberfläche
+
+     Drei Grundtöne, kein reines Schwarz. #000000 wirkt auf Bildschirmen hart
+     und lässt Schatten verschwinden. Die drei Töne unterscheiden sich gerade
+     so weit, dass Ebenen erkennbar werden, ohne dass Kanten entstehen. */
+  --grund-0: #0d0b07;
+  --grund-1: #14110c;
+  --grund-2: #1e1913;
+
+  /* Gold ist Akzent, nicht Fläche. Es trägt Überschriften, Zierlinien und
+     Bedienelemente. Fließtext steht immer in --text, niemals in Gold. */
+  --gold: #d4af37;
+  --gold-hell: #e8c766;
+  --gold-dunkel: #9c7d22;
+  /* Der Rand einer gesperrten Schaltfläche, 4T-0063. Gemischt und nicht
+     gewählt: 75 Prozent --gold-dunkel über --grund-2, derselbe Anteil wie bei
+     --text-gesperrt. Nur so treten Rand und Beschriftung um denselben Schritt
+     zurück; vorher stand der Rand bei 1,00 und die Schrift bei 8,10, und der
+     Knopf verschwand zur Hälfte. */
+  --gold-gesperrt: #7d641e;
+
+  --text: #ede6d6;
+  --text-leise: #b5a98f;
+  /* Die Beschriftung einer gesperrten Schaltfläche, 4T-0063. Siehe
+     --gold-gesperrt für den Grund des gemeinsamen Anteils. */
+  --text-gesperrt: #8f8570;
+
+  --erfolg: #7fc97f;
+  --warnung: #e8b45a;
+  --fehler: #e8776a;
+
+  /* ------------------------------------------------------- Würfelfarben
+
+     Kanonisch, leicht abgetönt: kein reines Weiß, kein grelles Rot. Das
+     nimmt Härte, ohne die Zuordnung zum echten Würfel zu gefährden. */
+  --wuerfel-kanonisch-weiss: #f2efe6;
+  --wuerfel-kanonisch-gelb: #f2ce1b;
+  --wuerfel-kanonisch-orange: #ef6c1a;
+  --wuerfel-kanonisch-gruen: #1aa053;
+  --wuerfel-kanonisch-rot: #c62828;
+  --wuerfel-kanonisch-blau: #1552c0;
+
+  /* Alternative Palette für Rot-Grün-Schwäche. Sie ersetzt Rot durch Magenta
+     und Grün durch Türkis und staffelt die Helligkeiten gleichmäßig. Die
+     Staffelung ist der eigentliche Kunstgriff: Bei Dichromasie fallen Rot,
+     Orange, Gelb und Grün auf eine Achse zusammen, und dann trägt allein der
+     Helligkeitsunterschied. Ein erster Entwurf ohne sie war schlechter als
+     die kanonische Palette. */
+  --wuerfel-alternativ-weiss: #f5f2e9;
+  --wuerfel-alternativ-gelb: #ffdd1c;
+  --wuerfel-alternativ-tuerkis: #20b8b8;
+  --wuerfel-alternativ-orange: #b35300;
+  --wuerfel-alternativ-magenta: #a8146b;
+  --wuerfel-alternativ-blau: #123a96;
+
+  /* ----------------------------------------------------------- Abstände
+
+     Achterstufung ohne Zwischenwerte, in rem statt in Pixeln: Die
+     Schriftgröße ist einstellbar, und nach Eintrag 6 des
+     Einstellungs-Katalogs wachsen die Bedienelemente mit. Mit festen Pixeln
+     bliebe das Raster stehen, während die Schrift wächst. */
+  --abstand-1: 0.5rem;
+  --abstand-2: 1rem;
+  --abstand-3: 1.5rem;
+  --abstand-4: 2rem;
+  --abstand-5: 3rem;
+
+  /* Ecken bleiben fest. Sie sind eine gestalterische Konstante und keine
+     Größe, die mit der Schrift wachsen soll. */
+  --ecke: 6px;
+  --ecke-schaltflaeche: 4px;
+
+  --zierlinie: 1px solid var(--gold-dunkel);
+
+  /* Lichtsaum an Kanten. Bewusst kein Farbwert des Systems, sondern Licht:
+     Er sitzt an der oberen Kante eines Elements und nie auf der Fläche. Ein
+     Lichtfleck mitten auf einem Feld verfälscht die wahrgenommene Farbe. */
+  --glanz: rgb(255 255 255 / 0.35);
+  --glanz-kante: inset 0 1px 0 var(--glanz);
+
+  /* Wie weit ein zurückgenommenes Feld hinter dem Schleier verschwindet,
+     aus 4T-0050. Der Schleier trägt die Farbe der Fuge; das Feld sinkt damit
+     in den Zwischenraum zurück, statt eine neue Farbe zu bekommen.
+
+     **Der Wert ist gerechnet und nicht gewählt**, zwischen zwei Schranken:
+     Nach oben muss sich jedes zurückgenommene Feld deutlich von seiner vollen
+     Farbe abheben, nach unten muss der Würfel ein Körper bleiben. Bei 0,72
+     beträgt der kleinste Abstand zur vollen Farbe 46,2 und der kleinste
+     Abstand zur Fuge 19,7; beides steht in `scripts/farben-pruefen.mjs` und
+     wird bei jedem Lauf neu gerechnet. */
+  --ruecknahme-deckung: 0.72;
+
+  /* Sperrung für Marken. Versalien ohne Sperrung wirken gedrängt, weil die
+     Buchstaben alle dieselbe Höhe haben und die Zwischenräume fehlen. */
+  --sperrung: 0.18em;
+  --sperrung-titel: 0.32em;
+
+  /* ---------------------------------------------------------- Typografie
+
+     Keine eingebettete Schriftdatei. Sie kostet mehrere hundert Kilobyte in
+     einer Datei, die klein bleiben soll, und wirft Lizenzfragen auf. */
+  --schrift: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+
+  /* Notation dickengleich. Keine Stilfrage: Untereinander stehende Zugfolgen
+     sind nur dann vergleichbar, wenn die Zeichen gleich breit sind. */
+  --schrift-notation:
+    ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', 'SF Mono', Consolas, monospace;
+
+  /* Grundgröße. Die Einstellung aus 4T-0026 setzt diesen Wert um, alles
+     Weitere ist in rem davon abgeleitet. */
+  --schrift-grund: 16px;
+  --zeilenhoehe: 1.6;
+  --zeilenhoehe-ueberschrift: 1.25;
+  --zeilenlaenge: 70ch;
+
+  /* Kantenlänge eines Steins. Sie folgt dem Fenster und nicht der
+     Schriftgröße: Ein Würfel ist kein Text und soll nicht mitwachsen, wenn
+     jemand die Schrift vergrößert, um besser lesen zu können. */
+  --kante: clamp(34px, 9vmin, 66px);
+}
+
+/* --------------------------------------------------- Palette des Würfels
+
+   Die Zuordnung Seite zu Farbe: oben gelb, unten weiß, vorn grün, hinten
+   blau, rechts orange, links rot. Sie steht hier und nicht im Programm,
+   damit ein Palettenwechsel eine Frage der Anzeige bleibt und den
+   Würfelzustand nicht anfasst.
+
+   **Weiß liegt unten und nicht oben**, seit 4T-0055 am 2026-08-16. Der
+   Lernpfad lässt den Würfel liegen, die erste Schicht entsteht deshalb
+   unten, und sie ist die weiße; die letzte Schicht oben ist die gelbe.
+   Genau so steht es in jeder Anleitung, und vor dieser Drehung war der Pfad
+   an beiden Enden gegenüber ihr verkehrt.
+
+   **Rot und Orange sind dabei mitgetauscht worden, und das ist keine
+   Zutat.** Ein Tausch allein von Weiß und Gelb spiegelt die Händigkeit und
+   ergäbe einen Würfel, den es nicht gibt. Von den 24 Drehungen des Würfels
+   tragen genau vier Weiß unten; diese hier lässt Grün vorn stehen, und «Grün
+   vorn» ist die Bezugsangabe fremder Anleitungen. Nachgerechnet wird die
+   Aussage in `test/oberflaeche.test.js`.
+
+   In der alternativen Palette treten Türkis an die Stelle von Grün und
+   Magenta an die von Rot, mit gleichmäßig gestaffelten Helligkeiten.
+
+   **Seit 4T-0069 gibt es eine zweite Stelle mit derselben Zuordnung**, den
+   Zweig `farbe.<palette>.<seite>` in `src/i18n`. Er hält die Namen, die der
+   Befund der Lösbarkeitsprüfung ausspricht, denn ein Farbwert trägt keinen.
+   **Wer hier eine Farbe tauscht, ändert sie dort mit**, in beiden Sprachen. */
+
+:root,
+[data-palette='kanonisch'] {
+  --seite-u: var(--wuerfel-kanonisch-gelb);
+  --seite-d: var(--wuerfel-kanonisch-weiss);
+  --seite-f: var(--wuerfel-kanonisch-gruen);
+  --seite-b: var(--wuerfel-kanonisch-blau);
+  --seite-r: var(--wuerfel-kanonisch-orange);
+  --seite-l: var(--wuerfel-kanonisch-rot);
+
+  /* Die Augen der Kennzeichnung, je Seite dunkel oder hell. Welches von
+     beidem, ist gerechnet und nicht gewählt: Ein dunkles Auge erreicht auf
+     dem alternativen Blau nur 1,94 zu 1 und wäre dort so gut wie unsichtbar.
+     Mit der Wahl je Farbe liegt das schwächste Paar bei 4,07.
+
+     Die Wahl folgt der Farbe und nicht der Seite. Mit der Drehung von
+     4T-0055 sind deshalb rechts und links mitgewandert: Rot braucht ein
+     helles Auge, Orange ein dunkles. */
+  --auge-u: var(--grund-0);
+  --auge-d: var(--grund-0);
+  --auge-f: var(--grund-0);
+  --auge-r: var(--grund-0);
+  --auge-l: var(--text);
+  --auge-b: var(--text);
+}
+
+[data-palette='alternativ'] {
+  --seite-u: var(--wuerfel-alternativ-gelb);
+  --seite-d: var(--wuerfel-alternativ-weiss);
+  --seite-f: var(--wuerfel-alternativ-tuerkis);
+  --seite-b: var(--wuerfel-alternativ-blau);
+  --seite-r: var(--wuerfel-alternativ-orange);
+  --seite-l: var(--wuerfel-alternativ-magenta);
+
+  /* Hier bleiben die Augen, wie sie waren: Orange ist in dieser Palette
+     dunkler als in der kanonischen und braucht ein helles Auge, Magenta
+     ebenso. Der Tausch von rechts und links ändert daran nichts. */
+  --auge-u: var(--grund-0);
+  --auge-d: var(--grund-0);
+  --auge-f: var(--grund-0);
+  --auge-l: var(--text);
+  --auge-r: var(--text);
+  --auge-b: var(--text);
+}
+
+/* Vier Stufen der Schriftgröße. Alles Weitere ist in rem davon abgeleitet
+   und wächst mit, auch die Abstände und damit die Bedienelemente. */
+[data-schriftgroesse='klein'] {
+  --schrift-grund: 14px;
+}
+
+[data-schriftgroesse='gross'] {
+  --schrift-grund: 18px;
+}
+
+[data-schriftgroesse='sehrGross'] {
+  --schrift-grund: 21px;
+}
+
+/* ------------------------------------------------------------- Grundlagen */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: var(--schrift-grund);
+}
+
+body {
+  margin: 0;
+  background: var(--grund-0);
+  color: var(--text);
+  font-family: var(--schrift);
+  line-height: var(--zeilenhoehe);
+}
+
+/* **Über einer Überschrift steht mehr Luft als unter ihr**, zwei zu eins,
+   4T-0064. Nähe stiftet Zugehörigkeit, und eine Überschrift gehört zu dem, was
+   ihr folgt. Stand sie näher an dem, was ihr vorausging, las das Auge sie als
+   Schluss des Vorigen. Dieselbe Regel waagerecht bei .zugliste-folgemarke. */
+h1,
+h2,
+h3 {
+  margin: var(--abstand-2) 0 var(--abstand-1);
+  color: var(--gold);
+  font-weight: 600;
+  line-height: var(--zeilenhoehe-ueberschrift);
+  /* Ausdrücklich kein Großbuchstabensatz. */
+  text-transform: none;
+}
+
+/* Die erste Überschrift eines Bereichs sitzt am Rahmen und braucht keinen
+   Abstand nach oben. Ausgeschrieben und nicht als «h1, h2, h3:first-child»:
+   Diese Kurzform träfe allein das h3. */
+h1:first-child,
+h2:first-child,
+h3:first-child {
+  margin-top: 0;
+}
+
+h1 {
+  font-size: 1.5rem;
+}
+
+h2 {
+  font-size: 1.125rem;
+}
+
+p {
+  margin: 0 0 var(--abstand-2);
+  max-width: var(--zeilenlaenge);
+}
+
+p:last-child {
+  margin-bottom: 0;
+}
+
+.leise {
+  color: var(--text-leise);
+}
+
+.notation {
+  font-family: var(--schrift-notation);
+}
+
+/* ------------------------------------------------------------------ Marken
+
+   Gesperrte Versalien für Marken, Bereichsüberschriften und Schaltflächen bis
+   etwa zwanzig Zeichen, zugelassen im Design-Konzept, Abschnitt 6, seit dem
+   2026-08-13. Für Lektionsüberschriften, Fließtext und Meldungen bleiben sie
+   verboten: Versalien nehmen dem Wort seinen Umriss, und daran erkennt das
+   Auge ein Wort, ohne es zu buchstabieren. Auf Länge kostet das Tempo. */
+
+.marke-titel {
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: var(--sperrung-titel);
+  text-transform: uppercase;
+  /* Rückfallebene: Ohne Verlauf im Text bleibt es beim vollen Goldton. */
+  color: var(--gold);
+}
+
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .marke-titel {
+    background: linear-gradient(180deg, var(--gold-hell), var(--gold) 55%, var(--gold-dunkel));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+/* Die Zierlinie unter dem Titel läuft nicht über die volle Breite und
+   verblasst nach rechts. Eine durchgezogene Linie über die ganze Seite
+   umrandet, statt zu gliedern. */
+.marke-linie {
+  width: min(18rem, 60%);
+  height: 1px;
+  margin: var(--abstand-2) 0;
+  border: 0;
+  background: linear-gradient(90deg, var(--gold-dunkel), transparent);
+}
+
+.marke-unterzeile {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: var(--sperrung);
+  text-transform: uppercase;
+  color: var(--text-leise);
+}
+
+/* Bereichsüberschrift mit vorangestelltem Quadrat. Das Quadrat markiert den
+   Beginn eines Bereichs, ohne ihn zu einer Überschrift aufzublasen. */
+.marke-bereich {
+  display: flex;
+  align-items: center;
+  gap: var(--abstand-1);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: var(--sperrung);
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.marke-bereich::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: var(--gold);
+  flex: none;
+}
+
+/* --------------------------------------------------------------- Aufbau
+
+   Drei Bereiche: Würfel in der Mitte, Erklärung und Fortschritt daneben,
+   Bedienung darunter. Der Würfel bekommt den größten zusammenhängenden
+   Bereich der Fläche, alles andere ordnet sich unter. */
+
+.seite {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--abstand-3);
+  gap: var(--abstand-3);
+}
+
+.kopf {
+  padding-bottom: var(--abstand-2);
+  /* Zierlinien trennen Bereiche, sie umranden nichts vollflächig. */
+  border-bottom: var(--zierlinie);
+}
+
+.kopf h1 {
+  margin: 0;
+}
+
+.raster {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-areas:
+    'buehne begleitung'
+    'bedienung bedienung';
+  gap: var(--abstand-3);
+}
+
+/* Bei schmalen Fenstern stapeln sich die Bereiche in derselben Reihenfolge,
+   der Würfel bleibt oben. */
+@media (max-width: 60rem) {
+  .raster {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'buehne'
+      'begleitung'
+      'bedienung';
+  }
+}
+
+#buehne {
+  grid-area: buehne;
+  display: grid;
+  place-items: center;
+  /* Die Zeilen bleiben so hoch wie ihr Inhalt, auch wenn die Nachbarspalte
+     den Bereich aufzieht. Ohne diese Zeile verteilt das Raster den Zuwachs
+     gleichmäßig auf alle Zeilen, und `place-items: center` schiebt den Inhalt
+     in deren Mitte. Gemessen am 2026-08-17 bei 1920 × 1080 waren das 773 px
+     auf dreizehn Zeilen; der Inhalt des Bereichs endete dadurch 743 px tiefer,
+     und der Einstieg in das Lösen lag unter der Bildkante. Der freie Platz
+     sammelt sich jetzt am Ende des Bereichs, wo er nichts verschiebt.
+     Siehe 4T-0057. */
+  align-content: start;
+  /* Keine Mindesthöhe. Die frühere Schranke von 6,2 Kantenlängen sollte den
+     Bereich groß genug für Würfelbühne und Marke halten, konnte aber nie
+     greifen: Beide zusammen messen mit dem Innenabstand 443 px gegen eine
+     Schranke von 409 px, und in zehn gemessenen Fällen, vier Schriftgrößen
+     mal zwei Ansichten und zwei schmale Fenster, lag der Inhalt jedes Mal
+     darüber. Eine Regel, die nie greift, wird beim nächsten Lesen für die
+     Ursache von etwas gehalten. Gemessen am 2026-08-17 in 4T-0057. */
+
+  /* Drei Spalten für die Anordnung aus 4T-0058, siehe unten. Sie stehen hier
+     und nicht in der Abfrage, weil ein Bereich sich nicht selbst abfragen
+     kann. Solange die Abfrage nicht greift, ist die Mitte die einzige Spalte
+     mit Inhalt, und das Bild ist dasselbe wie mit einer Spalte.
+
+     **Die äußeren Spalten sind biegsam, die mittlere nicht, und das ist
+     gemessen und nicht gewählt.** Die naheliegende Verteilung wäre
+     umgekehrt: außen so breit wie die Tastenblöcke, in der Mitte der Rest.
+     Sie ist falsch, weil jede Reihe, die über alle drei Spalten läuft, die
+     mittlere dann auf ihre eigene Breite aufzieht, statt umzubrechen. Am
+     2026-08-17 bei 800 px gemessen: Die Reihe der Verlaufsschaltflächen wuchs
+     so auf 894 px und schob die ganze Seite 55 px über den rechten Rand. Mit
+     biegsamen Außenspalten fangen diese den Zuwachs ab, die Reihe bricht bei
+     687 px um, und der Würfel behält seine Spalte. */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  container-type: inline-size;
+}
+
+/* Alles, was nicht ausdrücklich neben dem Würfel steht, nimmt die volle Breite
+   der drei Spalten ein. */
+#buehne > * {
+  grid-column: 1 / -1;
+}
+
+/* Bei breiten Fenstern stehen die sechs Tastenblöcke links und rechts vom
+   Würfel statt untereinander darunter, 4T-0058. Links die Hälfte, die im
+   bisherigen Feld links stand, U, R und F, rechts die andere. Damit bleibt
+   jede Taste dort, wo der Anwender sie gelernt hat, und die Paare aus
+   gegenüberliegenden Seiten stehen weiter auf gleicher Höhe, nur mit dem
+   Würfel dazwischen.
+
+   **Die Reihenfolge im Dokument bleibt unangetastet.** Platziert wird über
+   `data-seite` und nicht über die Stellung unter Geschwistern; Tastatur und
+   Vorlesereihenfolge sind deshalb dieselben wie zuvor. Halter, Feld und Zeilen
+   treten dafür mit `display: contents` aus dem Fluss, damit die Blöcke
+   unmittelbare Rasterelemente der Bühne werden. Ohne das ließen sie sich nicht
+   neben den Würfel stellen, der ein Geschwister ihres Halters ist.
+
+   **Gefragt wird die Bühne und nicht das Fenster.** Ob die drei nebeneinander
+   passen, hängt an der Breite der Bühne und an der Schriftgröße, und eine
+   Schwelle am Fenster kann beides nicht zugleich treffen: Gemessen am
+   2026-08-17 braucht die Anordnung 660, 709, 758 und 831 px für die vier
+   Schriftgrößen, das Fenster dafür 78, 83, 89 und 98 rem. Eine feste
+   Fensterschwelle wäre für die kleinste Schrift zu spät und für die größte zu
+   früh, und zu früh heißt hier, dass die Blöcke aus der Bühne ragen.
+
+   **Die Schwelle misst deshalb die Bühne und trennt dabei zwei Anteile.** Der
+   Würfel misst 317 px und wächst nicht mit der Schrift, die beiden Blöcke samt
+   ihren Rändern messen zusammen 24,5 em und wachsen mit ihr. Aus 320 px und
+   25 em ergibt sich für die vier Schriftgrößen eine Schranke von 670, 720, 770
+   und 845 px gegen einen Bedarf von 661, 709, 759 und 832 px, also überall
+   knapp darüber. Eine einzelne Zahl in `em` träfe das nicht: Sie müsste dem
+   größten der vier Werte folgen, 47,1 em bei der kleinsten Schrift, und
+   verschenkte bei 1440 px und mittlerer Schrift eine Anordnung, die dort
+   passte. Dass ausgerechnet die kleinste Schrift den größten Wert in `em`
+   trägt, ist kein Widerspruch, sondern derselbe feste Würfel, gemessen in einer
+   kleineren Einheit.
+
+   Unterhalb von 60 rem bleibt es beim gestapelten Bild, auch wenn die Breite
+   reichte. Der Aufbau stapelt dort nach Abschnitt 7 des Design-Konzepts, und
+   ein Würfel mit Tasten daneben, unter dem sich die Bereiche stapeln, wäre
+   zwei Ordnungen in einem Bild. */
+@media (min-width: 60rem) {
+  @container (min-width: calc(320px + 25em)) {
+    #tastenfeld-halter,
+    #tastenfeld-halter .tastenfeld,
+    #tastenfeld-halter .tastenfeld-zeile {
+      display: contents;
+    }
+
+    /* Der Würfel steht in der Mitte und trägt die Höhe der drei Tastenzeilen.
+       Beide Halter bekommen dieselbe Stellung, weil immer genau einer sichtbar
+       ist und die Anordnung in beiden Ansichten dieselbe sein muss. */
+    #wuerfel-halter,
+    #netz-halter {
+      grid-column: 2;
+      grid-row: 2 / span 3;
+    }
+
+    /* Der Abstand steht als Rand am Block und nicht als Spalt am Raster: Ein
+       Spalt gälte auch dann, wenn die äußeren Spalten leer sind, und machte
+       jede Reihe darunter um seine doppelte Breite schmaler. */
+    .tastenblock {
+      margin-inline: var(--abstand-3);
+    }
+
+    .tastenblock[data-seite='U'] {
+      grid-area: 2 / 1;
+    }
+
+    .tastenblock[data-seite='R'] {
+      grid-area: 3 / 1;
+    }
+
+    .tastenblock[data-seite='F'] {
+      grid-area: 4 / 1;
+    }
+
+    .tastenblock[data-seite='D'] {
+      grid-area: 2 / 3;
+    }
+
+    .tastenblock[data-seite='L'] {
+      grid-area: 3 / 3;
+    }
+
+    .tastenblock[data-seite='B'] {
+      grid-area: 4 / 3;
+    }
+  }
+}
+
+/* Die Hülle der beiden rechten Bereiche, 4T-0062. Sie trägt selbst keine Fläche
+   und stapelt nur; der Abstand ist derselbe wie zwischen den Bereichen des
+   Rasters, damit die Trennung überall gleich weit ist. */
+#begleitung {
+  grid-area: begleitung;
+  display: flex;
+  flex-direction: column;
+  gap: var(--abstand-3);
+  /* Ohne diese Zeile wüchse die Hülle mit ihrem Inhalt über die Rasterzeile
+     hinaus, statt ihn im vorhandenen Platz zu stapeln. */
+  min-height: 0;
+}
+
+#bedienung {
+  grid-area: bedienung;
+}
+
+/* Aufklapper, zweimal im Programm: der Bereich «Bedienung» seit 4T-0060 und der
+   Lernpfad seit 4T-0061. **Sie sehen gleich aus und werden verschieden
+   bedient**, und das ist Absicht. Die Einstellungen klappt der Anwender selbst
+   zu, weil er sie selten braucht; den Lernpfad klappt das Programm zu, wenn der
+   Anwender in das Lösen wechselt. Ein Anwender, der zweierlei Gestalt für
+   dasselbe Verhalten sähe, müsste zweimal lernen, was ein Dreieck bedeutet.
+
+   Gemessen am 2026-08-17 bei 1920 × 1080: Der Bereich «Bedienung» misst offen
+   1225 und geschlossen 74 px, der Lernpfad 812 gegen 51 px.
+
+   **Die Marke ist die Überschrift des Bereichs.** `summary` nimmt genau ein
+   Überschriftselement auf, und beim Bereich «Bedienung» behält nur so
+   `aria-labelledby` sein Ziel. Ein zusätzlicher Text neben der Marke wäre neuer
+   Inhalt, den 3E-0017 ausschließt. */
+.klappe > summary {
+  cursor: pointer;
+  /* Das Aufklappzeichen des Browsers nimmt die Farbe seines Elements. Ohne
+     diese Zeile stünde es in der Textfarbe neben einer goldenen Marke. */
+  color: var(--gold);
+}
+
+.klappe > summary:focus-visible {
+  outline: 2px solid var(--gold-hell);
+  outline-offset: 2px;
+}
+
+/* Der Abstand unter der Marke gehört dem geöffneten Zustand. Geschlossen wäre
+   er ein Rand unter der letzten sichtbaren Zeile und ließe den Bereich höher
+   aussehen, als er ist. */
+.klappe > summary > :is(h2, h3) {
+  display: inline;
+  margin-bottom: 0;
+}
+
+.klappe[open] > summary {
+  margin-bottom: var(--abstand-2);
+}
+
+/* Die Einstellungen halten den größeren Abstand, weil ihre Felder untereinander
+   denselben tragen. Beim Lernpfad folgt auf die Marke die Reihe der zehn
+   Punkte, und die steht dem Titel näher. */
+#bedienung-klappe[open] > summary {
+  margin-bottom: var(--abstand-3);
+}
+
+/* Der Grundverlauf ist bewusst kaum wahrnehmbar. Er nimmt der Fläche das
+   Papierhafte, ohne selbst aufzufallen; beide Endwerte sind geprüfte
+   Grundtöne, der Textkontrast bleibt damit zwischen 14,03 und 15,15.
+
+   **Die Zierlinie steht seit 4T-0062 um jeden Bereich und nicht nur um die
+   Bühne.** Vorher trug sie allein der Würfel, und mit dem Aufteilen der rechten
+   Seite in Lösungsweg und Lernpfad wäre daraus eine Rangordnung geworden, die
+   niemand gemeint hat: zwei umrandete Bereiche und zwei ohne. Abschnitt 7 des
+   Design-Konzepts ist im selben Schritt berichtigt worden; er verbot bis dahin
+   das vollflächige Umranden, während der Bestand es längst tat. */
+.flaeche {
+  background: linear-gradient(180deg, var(--grund-2), var(--grund-1) 40%);
+  border: var(--zierlinie);
+  border-radius: var(--ecke);
+  padding: var(--abstand-3);
+}
+
+/* --------------------------------------------------------------- Würfel
+
+   Sechsundzwanzig Steine mit den dreidimensionalen Transformationen des
+   Browsers, ohne Fremdbibliothek. Die Kantenlänge folgt dem Fenster und
+   nicht der Schriftgröße: Ein Würfel ist kein Text, und er soll nicht
+   wachsen, wenn jemand die Schrift vergrößert, um besser lesen zu können. */
+
+/* Die Bühne ist deutlich größer als der Kasten aus drei mal drei Steinen.
+
+   Der Grund ist gerechnet und nicht geschätzt, siehe `projizierteAusdehnung`
+   in geometrie.js: Die Drehung stellt den Würfel auf die Diagonale, und die
+   Perspektive vergrößert die vordere Ecke. Über alle Blickwinkel braucht er
+   4,76 mal 5,29 Kantenlängen. Das Layout merkt davon nichts, weil
+   Transformationen den Textfluss nicht anfassen; wer die Bühne so groß macht
+   wie den Kasten, bekommt einen Würfel, der aus seinem Bereich ragt.
+
+   Die letzten 0,2 Kanten der Höhe gehören dem Schlagschatten. */
+.wuerfel-buehne {
+  --blick-x: -22deg;
+  --blick-y: -36deg;
+  width: calc(var(--kante) * 4.8);
+  height: calc(var(--kante) * 5.5);
+  display: grid;
+  place-items: center;
+  /* Ein flacher Fluchtpunkt lässt den Würfel wie eine Zeichnung wirken, ein
+     zu naher verzerrt die hinteren Steine bis zur Unkenntlichkeit. */
+  perspective: calc(var(--kante) * 14);
+  position: relative;
+  cursor: grab;
+  /* Ohne das scrollt die Seite mit, sobald jemand mit dem Finger dreht. */
+  touch-action: none;
+  /* Ein Ziehen über den Würfel darf keine Auswahl aufziehen. */
+  user-select: none;
+}
+
+/* Das Seitenkreuz, 4T-0065. Es benennt die drei Seiten, die man gerade sieht.
+
+   **Oben links in der Bühne und in keiner anderen Ecke.** Über ein Raster von
+   48 Blickwinkeln gemessen: Ein Feld von 56 px ist in den oberen Ecken bei
+   jedem Winkel frei von Würfelflächen, in den unteren bei 44 von 48. Bei 72 px
+   sind es in jeder Ecke nur noch 20. Die 0,85 Kantenlängen sind damit keine
+   gewählte Größe, sondern die gemessene Obergrenze.
+
+   **In der Ecke und nicht mit Innenabstand.** Acht Pixel eingerückt war es
+   bei 16 der 48 Winkel verdeckt, und zwar genau dort, wo der Würfel
+   achsenparallel steht: Dann ist seine Silhouette ein Rechteck statt eines
+   Sechsecks und lässt die Ecken nicht frei. Die Bühnenkante ist unsichtbar,
+   der Rahmen des Bereichs liegt weiter außen.
+
+   **Kein Zeichen liegt auf dem Würfel**, und deshalb kollidiert es mit keinem
+   der bestehenden: nicht mit dem Saum, nicht mit der Laufmarke, nicht mit den
+   Würfelaugen der Kennzeichnung und nicht mit dem Schleier der Lektion 8. */
+.seitenkreuz {
+  position: absolute;
+  top: 0;
+  width: calc(var(--kante) * 0.85);
+  height: calc(var(--kante) * 0.85);
+  /* Ein Ziehen beginnt auch über dem Kreuz und dreht den Blick. Ohne diese
+     Zeile wäre in der Ecke ein toter Fleck. */
+  pointer-events: none;
+}
+
+/* Links die Seiten, die man sieht, rechts die verdeckten. Beide Ecken sind
+   bei jedem Blickwinkel frei, gemessen über dasselbe Raster von 48 Winkeln. */
+.seitenkreuz-vorn {
+  left: 0;
+}
+
+.seitenkreuz-hinten {
+  right: 0;
+}
+
+/* Das hintere Kreuz tritt zurück, und zwar über die Helligkeit und nicht über
+   den Farbton: Was man nicht sieht, soll auch nicht so laut sein wie das,
+   was man sieht. Ohne diesen Unterschied stünden zwei gleichwertige Kreuze
+   nebeneinander, und welches das vordere ist, wäre nicht abzulesen. */
+.seitenkreuz-hinten .seitenkreuz-marke {
+  color: var(--text-gesperrt);
+}
+
+.seitenkreuz-hinten .seitenkreuz-strahl,
+.seitenkreuz-hinten::before {
+  background: var(--gold-gesperrt);
+}
+/* Der Würfel selbst als Punkt. Ohne ihn schwebten drei Buchstaben ohne
+   gemeinsamen Bezug, und die Strahlen begännen im Nichts. */
+.seitenkreuz::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  margin: -1.5px 0 0 -1.5px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+/* Der Ort folgt der gerechneten Richtung. **Die Prozentwerte stehen in `left`
+   und `top` und nicht in einem `translate`:** Dort bezögen sie sich auf die
+   Größe des Buchstabens und nicht auf das Feld, und das Kreuz fiele auf wenige
+   Pixel zusammen. */
+.seitenkreuz-marke {
+  position: absolute;
+  left: calc(50% + var(--richtung-x, 0%));
+  top: calc(50% + var(--richtung-y, 0%));
+  transform: translate(-50%, -50%);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--gold);
+}
+
+/* Der Strahl trägt die Richtung ein zweites Mal. Er ist die Rückfallebene für
+   den Fall, dass zwei Buchstaben nah beieinander stehen: Wohin ein Strich
+   zeigt, ist auch dann noch abzulesen. Bei einer zugewandten Seite hat er die
+   Länge null und verschwindet von selbst. */
+.seitenkreuz-strahl {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 1px;
+  width: var(--laenge, 0%);
+  background: var(--gold-dunkel);
+  transform-origin: left center;
+  transform: rotate(var(--winkel, 0deg));
+}
+
+.wuerfel-buehne.greift {
+  cursor: grabbing;
+}
+
+.wuerfel {
+  position: relative;
+  width: calc(var(--kante) * 3);
+  height: calc(var(--kante) * 3);
+  transform-style: preserve-3d;
+  transform: rotateX(var(--blick-x)) rotateY(var(--blick-y));
+}
+
+/* Der Schlagschatten liegt unter dem Würfel und dreht sich nicht mit. Er
+   erdet den Körper; ohne ihn schwebt er im Nichts. */
+.wuerfel-buehne::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--kante) * 0.1);
+  width: calc(var(--kante) * 2.6);
+  height: calc(var(--kante) * 0.45);
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse, rgb(0 0 0 / 0.55), transparent 70%);
+  pointer-events: none;
+}
+
+/* Die Schicht nimmt während einer Bewegung die neun betroffenen Steine auf.
+   Sie liegt deckungsgleich über dem Körper und verschiebt nichts; gedreht
+   wird sie als Ganzes. */
+.schicht {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+.stein {
+  position: absolute;
+  width: var(--kante);
+  height: var(--kante);
+  /* Der Stein sitzt in der Mitte der Bühne und wird von dort verschoben. */
+  left: var(--kante);
+  top: var(--kante);
+  transform-style: preserve-3d;
+  transform: translate3d(
+    calc(var(--x) * var(--kante)),
+    calc(var(--y) * var(--kante)),
+    calc(var(--z) * var(--kante))
+  );
+}
+
+/* `stein-flaeche` und nicht `feld`: Die Klasse `feld` trägt im Bedienbereich
+   schon ein Formularfeld. Beim ersten Bau hieß beides gleich, und die
+   absolute Positionierung der Würfelfläche legte alle Einstellungen
+   übereinander. Keine Prüfung hätte das gefunden. */
+.stein-flaeche {
+  position: absolute;
+  inset: 0;
+  /* Abgerundete Ecken und ein Rand in der tiefsten Grundfarbe ergeben die
+     abgesetzten Fugen des Design-Konzepts. Die Fuge ist damit kein eigenes
+     Element, sondern der Zwischenraum selbst. */
+  border: calc(var(--kante) * 0.06) solid var(--grund-0);
+  border-radius: calc(var(--kante) * 0.16);
+  /* Lichtsaum an der oberen Kante, ausdrücklich nicht auf der Fläche: Ein
+     Lichtfleck mitten auf dem Feld verfälscht die wahrgenommene Farbe und
+     arbeitet gegen die Unterscheidbarkeit der Palette. Dazu Eigenschatten
+     unten, damit jedes Feld Tiefe bekommt. */
+  box-shadow:
+    inset 0 calc(var(--kante) * 0.05) 0 rgb(255 255 255 / 0.28),
+    inset 0 calc(var(--kante) * -0.07) calc(var(--kante) * 0.07) rgb(0 0 0 / 0.3);
+  backface-visibility: hidden;
+}
+
+/* Die Zierlinie stand bis 4T-0062 hier und allein um die Bühne. Sie steht
+   seitdem bei `.flaeche` und damit um jeden der vier Bereiche. */
+
+/* ------------------------------------- Hervorhebung des anstehenden Zuges
+
+   Sie beantwortet zwei Fragen mit zwei Mitteln, 4T-0034. **Was sich dreht**,
+   sagt der Saum um alle 21 Flächen der Schicht. **Wohin es sich dreht**, sagt
+   die breitere, hellere Marke an der vorauslaufenden Kante der zwölf Flächen
+   des Rings. Welche Kante das ist, rechnet `geometrie.js` und ist dort über
+   alle achtzehn Züge gegen den Kern geprüft.
+
+   **Die Hervorhebung sitzt in der Fuge und nicht auf dem Feld.** Das ist
+   gemessen und nicht gewählt: Die Fuge trägt immer `grund-0`, gleich welche
+   Palette gewählt ist. Ein Saum, der sie ersetzt, hat deshalb einen festen
+   Farbabstand von 93,1 statt eines Abstands, der je Feldfarbe zwischen 29,0
+   und 125,1 schwankt. Zugleich bleibt die Mitte der Fläche frei, wo die
+   Würfelaugen der Kennzeichnung ohne Farbe sitzen; zwei Auszeichnungen auf
+   demselben Feld dürfen einander nicht unkenntlich machen.
+
+   **`gold` scheidet aus**, es erreicht auf Gelb nur 21,3 und verfehlt damit
+   die Vorgabe von 25. Saum und Marke trennen sich untereinander mit 27,6 im
+   Abstandsmaß, im Kontrastmaß aber nur mit 2,38 zu 1. Deshalb trägt die Marke
+   zusätzlich die doppelte Breite; die Farbe allein soll die Unterscheidung
+   nicht tragen müssen. Alle Werte stehen in `scripts/farben-pruefen.mjs`. */
+
+.stein-flaeche[data-saum] {
+  border-color: var(--gold-dunkel);
+}
+
+/* Die Marke liegt als eigene Ebene über der Fläche und nicht als breiterer
+   Rand. Ein wachsender Rand verschöbe die Bezugsfläche des Hintergrunds, und
+   die Würfelaugen sprängen bei jedem neuen Zug um ein paar Bildpunkte. */
+.stein-flaeche[data-lauf]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 0 solid var(--gold-hell);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.stein-flaeche[data-lauf~='oben']::after {
+  border-top-width: calc(var(--kante) * 0.12);
+}
+
+.stein-flaeche[data-lauf~='rechts']::after {
+  border-right-width: calc(var(--kante) * 0.12);
+}
+
+.stein-flaeche[data-lauf~='unten']::after {
+  border-bottom-width: calc(var(--kante) * 0.12);
+}
+
+.stein-flaeche[data-lauf~='links']::after {
+  border-left-width: calc(var(--kante) * 0.12);
+}
+
+/* Im Netz nur der Saum, keine Laufkante: Bei U und D liefe sie sauber durch
+   die mittlere Reihe, bei den vier anderen Seiten bricht der Ring an der
+   Aufklappstelle und die Richtung kehrte sich um.
+
+   Er trägt hier den helleren Ton, weil er im Netz die einzige Auszeichnung
+   ist und ein einzelner Bildpunkt in `gold-dunkel` neben den kleinen Feldchen
+   untergeht. Eine Verwechslung mit einer Marke ist ausgeschlossen, weil es
+   im Netz keine gibt. */
+.netz-feld[data-saum] {
+  border-color: var(--gold-hell);
+}
+
+/* --------------------------------------- Zurückgenommener Rest, aus 4T-0050
+
+   Die Umkehrung der Hervorhebung darüber. Dort wird betont, hier wird
+   genommen: In Lektion 8 bleibt allein die Arbeitsstelle stehen, und alles
+   Übrige tritt hinter einen Schleier. Der Grund steht in Abschnitt 5 des
+   Didaktik-Konzepts. Zwischen den Anwendungen stehen von zwanzig beweglichen
+   Steinen nur noch zwei, der Anwender hält den Würfel für ruiniert und bricht
+   ab, kurz bevor er fertig ist. Was er nicht ansehen soll, wird ihm deshalb
+   nicht gezeigt.
+
+   **Drei Festlegungen, und jede beantwortet eine Anforderung aus AK7.**
+
+   1. **Ein Schleier über der Fläche und keine Entsättigung.** Eine
+      Entsättigung nähme dem Feld die Farbe und ließe die Würfelaugen der
+      Kennzeichnung ohne Farbe unangetastet; sie sind fast unbunt. Wer die
+      Rückfallebene eingeschaltet hat, sähe die zurückgenommenen Felder
+      weiterhin so deutlich wie vorher, und die Hilfe fiele für die aus, die
+      ohnehin weniger sehen. Der Schleier liegt über dem Hintergrundbild und
+      nimmt die Augen mit.
+   2. **Kein Übergang und keine Bewegung.** Wer die Bewegung abschaltet, darf
+      die Zurücknahme nicht verlieren. Sie steht deshalb ohne `transition`
+      da, und zwar ganz: Ein Übergang, den eine Einstellung entfernt, wäre
+      eine zweite Wahrheit über denselben Zustand.
+   3. **Der Schleier sitzt in der Fläche, die Auszeichnungen des Zuges im
+      Rand.** Deshalb kommen sich beide nicht ins Gehege: Saum und Laufmarke
+      bleiben auch auf einem zurückgenommenen Feld sichtbar, gemessen mit
+      einem Abstand von 30,1 im ungünstigsten Fall. Eine Vorführung der
+      Zugfolge bleibt damit lesbar, ohne die Zurücknahme aufzuheben. */
+
+.wuerfel[data-ruecknahme] .stein-flaeche:not([data-ziel])::before,
+.netz[data-ruecknahme] .netz-feld:not([data-ziel])::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--grund-0);
+  opacity: var(--ruecknahme-deckung);
+  pointer-events: none;
+}
+
+/* Das Feldchen des Netzes trägt den Schleier als Kind und muss ihn deshalb
+   halten. In der räumlichen Ansicht steht das schon oben, dort ist die Fläche
+   selbst absolut gesetzt. */
+.netz-feld {
+  position: relative;
+}
+
+/* ------------------------------------------------ Kennzeichnung ohne Farbe
+
+   Würfelaugen, ein bis sechs, angeordnet wie auf einem echten Spielwürfel.
+   Entscheid des Product Owners vom 2026-08-13.
+
+   Zwei Regeln bestimmen die Zuordnung vollständig:
+
+   1. **Gegenüberliegende Seiten ergeben sieben.** Oben und unten, vorn und
+      hinten, rechts und links sind am Würfel je ein Paar, und ihre
+      Augenzahlen addieren sich zu sieben wie beim Spielwürfel. Welche Farbe
+      dabei welche Zahl trägt, hängt an der Anordnung der Palette; seit der
+      Drehung von 4T-0055 trägt Gelb das eine Auge und Weiß die sechs.
+   2. **Rechtshändige Anordnung**, die westliche Standardform: Blickt man auf
+      die Ecke, an der eins, zwei und drei zusammentreffen, folgen sie gegen
+      den Uhrzeigersinn. Mit der Eins oben und der Zwei vorn liegt die Drei
+      damit rechts.
+
+   Daraus folgt zwingend: U eins, F zwei, R drei, L vier, B fünf, D sechs. Es
+   gibt keine zweite Belegung, die beide Regeln erfüllt und die Eins oben hat.
+
+   Das Zeichen gehört zur **Farbe eines Feldes**, nicht zu seiner Stelle am
+   Würfel. Es hängt deshalb an `data-farbe`, das mit jedem Zug mitwandert, und
+   nicht an `data-seite`, das die Stelle nennt. Der Unterschied ist der ganze
+   Zweck: Auf welcher Seite ein Feld liegt, sieht auch der Farbfehlsichtige;
+   welche Farbe es hat, gerade nicht.
+
+   Zugleich bleibt die Zuordnung vom Wechsel der Palette unberührt, weil der
+   Kern die Farbe eines Feldes als Seitenbuchstaben führt und nicht als
+   Farbnamen. Ein Feld behält sein Augenbild, ob sein Ton nun `#f2ce1b` oder
+   `#ffdd1c` ist.
+
+   Sie sind die Rückfallebene für den Fall, dass auch die alternative Palette
+   nicht reicht, und deshalb getrennt zuschaltbar: Zeichen auf der Fläche
+   stören die Materialanmutung und sollen nicht ungefragt erscheinen. */
+
+.stein-flaeche,
+.netz-feld,
+.farbwahl-feld {
+  /* Die Augen bemessen sich am Feld, in dem sie sitzen. Damit gilt dieselbe
+     Zeichnung in der räumlichen Ansicht, im Netz und auf der Farbwahl der
+     Eingabe. **Die Farbwahl steht seit 4T-0067 mit hier**, und sie muss es:
+     Ohne `--auge-r-mass` ist der Farbverlauf ungültig und fällt still auf
+     `none` zurück. Die Fläche trüge dann `data-farbe` und zeigte trotzdem kein
+     Zeichen, und wer die Kennzeichnung braucht, wählt seine Farbe blind. */
+  --auge-r-mass: calc(var(--feldmass) * 0.075);
+  background-repeat: no-repeat;
+}
+
+.stein-flaeche {
+  --feldmass: var(--kante);
+}
+
+.netz-feld {
+  --feldmass: var(--netz-feld);
+}
+
+[data-kennzeichnung='an'] [data-farbe='U'] {
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    var(--auge-u) 0 var(--auge-r-mass),
+    transparent var(--auge-r-mass)
+  );
+}
+
+/* Zwei Augen auf der Diagonalen, wie beim Spielwürfel. */
+[data-kennzeichnung='an'] [data-farbe='F'] {
+  background-image:
+    radial-gradient(
+      circle at 30% 30%,
+      var(--auge-f) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    ),
+    radial-gradient(
+      circle at 70% 70%,
+      var(--auge-f) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    );
+}
+
+/* Drei Augen auf derselben Diagonalen, mit der Mitte. */
+[data-kennzeichnung='an'] [data-farbe='R'] {
+  background-image:
+    radial-gradient(
+      circle at 30% 30%,
+      var(--auge-r) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      var(--auge-r) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    ),
+    radial-gradient(
+      circle at 70% 70%,
+      var(--auge-r) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    );
+}
+
+/* Vier Augen in den Ecken. */
+[data-kennzeichnung='an'] [data-farbe='L'] {
+  background-image:
+    radial-gradient(
+      circle at 30% 30%,
+      var(--auge-l) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    ),
+    radial-gradient(
+      circle at 70% 30%,
+      var(--auge-l) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    ),
+    radial-gradient(
+      circle at 30% 70%,
+      var(--auge-l) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    ),
+    radial-gradient(
+      circle at 70% 70%,
+      var(--auge-l) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    );
+}
+
+/* Fünf Augen: die vier Ecken und die Mitte. */
+[data-kennzeichnung='an'] [data-farbe='B'] {
+  background-image:
+    radial-gradient(
+      circle at 28% 28%,
+      var(--auge-b) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    ),
+    radial-gradient(
+      circle at 72% 28%,
+      var(--auge-b) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      var(--auge-b) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    ),
+    radial-gradient(
+      circle at 28% 72%,
+      var(--auge-b) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    ),
+    radial-gradient(
+      circle at 72% 72%,
+      var(--auge-b) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    );
+}
+
+/* Sechs Augen in zwei Spalten zu je drei. */
+[data-kennzeichnung='an'] [data-farbe='D'] {
+  background-image:
+    radial-gradient(
+      circle at 28% 22%,
+      var(--auge-d) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    ),
+    radial-gradient(
+      circle at 28% 50%,
+      var(--auge-d) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    ),
+    radial-gradient(
+      circle at 28% 78%,
+      var(--auge-d) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    ),
+    radial-gradient(
+      circle at 72% 22%,
+      var(--auge-d) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    ),
+    radial-gradient(
+      circle at 72% 50%,
+      var(--auge-d) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    ),
+    radial-gradient(
+      circle at 72% 78%,
+      var(--auge-d) 0 var(--auge-r-mass),
+      transparent var(--auge-r-mass)
+    );
+}
+
+/* --------------------------------------------------------- Flaches Netz
+
+   Die gebräuchliche Kreuzform. Alle 54 Feldchen auf einen Blick, ohne
+   drehen zu müssen: beim Prüfen einer Eingabe unentbehrlich, und
+   Rückfallebene für Geräte, auf denen die räumliche Ansicht nicht läuft. */
+
+.netz {
+  --netz-feld: clamp(14px, 3.4vmin, 30px);
+  display: grid;
+  grid-template-columns: repeat(12, var(--netz-feld));
+  grid-template-rows: repeat(9, var(--netz-feld));
+  gap: calc(var(--netz-feld) * 0.08);
+}
+
+.netz-feld {
+  border-radius: calc(var(--netz-feld) * 0.16);
+  border: 1px solid var(--grund-0);
+}
+
+/* ---------------------------------- Das Netz als Bedienfläche, 4T-0067
+
+   Ein leeres Feldchen ist der Normalzustand einer laufenden Eingabe und kein
+   Fehler: Wer 54 Felder überträgt, hat die meiste Zeit weniger als 54 gesetzt.
+   Es zeigt den Grund und einen zurückgenommenen Rand, damit die gesetzten
+   Felder die Fläche tragen und die leeren zurücktreten. */
+.netz-feld[data-leer] {
+  background-color: var(--grund-2);
+  border-color: var(--gold-dunkel);
+  border-style: dashed;
+}
+
+/* Die Mitten nehmen keine Farbe an und sagen das mit einem eigenen Rand. Ohne
+   dieses Zeichen probiert der Anwender es, bekommt keine Wirkung und hält die
+   Fläche für kaputt; die Beschriftung sagt es nur den Bedienhilfen. */
+.netz[data-bedienbar] .netz-feld[data-fest] {
+  border: 1px solid var(--gold);
+  box-shadow: var(--glanz-kante);
+}
+
+.netz[data-bedienbar] .netz-feld:not([data-fest]) {
+  cursor: pointer;
+}
+
+/* Die wandernde Fokusstelle. Sie liegt innen, weil ein äußerer Ring bei einem
+   Feldchen von 14 px in die Nachbarn ragte. */
+.netz[data-bedienbar] .netz-feld:focus-visible {
+  outline: 2px solid var(--gold-hell);
+  outline-offset: -2px;
+}
+
+/* Die Feldchen, die ein Befund der Prüfung nennt, 4T-0069.
+
+   **Ein Ring außen und keine Randfarbe.** Der Rand trägt hier bereits die
+   Unterscheidung zwischen gesetzt, leer und fest; ihn zu überschreiben nähme
+   eine Aussage weg, um eine andere hinzuzufügen. Der Ring legt sich in die
+   Fuge zwischen die Feldchen und lässt die Farbfläche unangetastet, auf die
+   der Anwender gerade schaut.
+
+   **Er sitzt außen, obwohl der Fokusring aus demselben Grund innen sitzt.**
+   Der Unterschied ist die Zahl: Der Fokus steht auf genau einem Feldchen und
+   dürfte seine Nachbarn nicht überdecken, ein Befund nennt drei bis neun
+   zusammenhängende, und dort begrenzt der Ring die Gruppe nach außen. */
+.netz-feld[data-befund] {
+  box-shadow: 0 0 0 2px var(--fehler);
+  /* Über die Nachbarn, sonst schnitte deren Fläche den Ring an. */
+  z-index: 1;
+}
+
+/* Die Farbwahl. Jede Schaltfläche trägt ihre Fläche, ihren Seitenbuchstaben
+   und ihre Zählung; damit steht die Zahl dort, wo die Farbe gewählt wird, und
+   nicht in einer eigenen Liste. */
+.eingabe-farben {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--abstand-1);
+  margin: var(--abstand-2) 0;
+}
+
+.farbwahl {
+  display: flex;
+  align-items: center;
+  gap: var(--abstand-1);
+  padding: var(--abstand-1);
+}
+
+/* Die gewählte Farbe trägt die goldene Füllung, wie ein gewähltes Segment
+   seit 4T-0035. Sie sitzt am Knopf und nicht an der Farbfläche: Diese zeigt
+   die Würfelfarbe, und ein Goldschimmer darauf verfälschte gerade die
+   Unterscheidbarkeit, für die die alternative Palette da ist. */
+.farbwahl[aria-pressed='true'] {
+  color: var(--grund-1);
+  background: linear-gradient(180deg, var(--gold-hell), var(--gold));
+  box-shadow: var(--glanz-kante);
+}
+
+.farbwahl[aria-pressed='true'] .farbwahl-zahl {
+  color: var(--grund-1);
+}
+
+.farbwahl-feld {
+  /* Dasselbe Maß, an dem sich die Zeichen der Kennzeichnung bemessen. Ohne es
+     bliebe die Fläche ohne Auge, obwohl sie `data-farbe` trägt. */
+  --feldmass: 1.5rem;
+
+  width: var(--feldmass);
+  height: var(--feldmass);
+  border-radius: var(--ecke-schaltflaeche);
+  border: 1px solid var(--grund-0);
+  box-shadow: var(--glanz-kante);
+}
+
+/* Die Taste, die diese Farbe wählt, im Stil des Tastenkürzels am Tastenfeld.
+   Dieselbe Zahl steht als Augen auf dem Feldchen daneben, wenn die
+   Kennzeichnung eingeschaltet ist; die Reihenfolge der Knöpfe folgt ihr. */
+.farbwahl-kuerzel {
+  font-size: 0.6875rem;
+  color: var(--text-leise);
+}
+
+.farbwahl-zahl {
+  color: var(--text-leise);
+  font-variant-numeric: tabular-nums;
+}
+
+.farbwahl[aria-pressed='true'] .farbwahl-kuerzel {
+  color: var(--grund-1);
+}
+
+/* **Die Marke der Eingabe braucht ihren Abstand nach oben**, obwohl sie das
+   erste Kind ihrer Hülle ist. Die Ausnahme weiter oben gilt der ersten
+   Überschrift eines Bereichs, die am Rahmen sitzt; diese Hülle ist kein Bereich,
+   sondern steht mitten im Fluss der Bühne, unmittelbar unter der Reihe der
+   Zustände. Ohne den Abstand liest das Auge die Marke als deren Schluss, und
+   4T-0064 gilt hier unverkürzt. Befund des Product Owners vom 2026-08-18. */
+#eingabe-flaeche > h2:first-child {
+  margin-top: var(--abstand-2);
+}
+
+/* Der Befund der Prüfung in Worten, 4T-0069.
+
+   Gebaut wie die Rückmeldung des Lernpfads, mit senkrechtem Strich am linken
+   Rand und in der Farbe der Aussage. Ein eigenes Aussehen für dieselbe Sache
+   hieße, dem Anwender zwei Formen für «das Programm sagt etwas» beizubringen.
+
+   **Die Zeile umbricht und wird nicht gekürzt.** Die Sätze nennen Farben und
+   Anzahlen, und genau der hintere Teil trägt die Auskunft, mit der jemand
+   sein Feldchen findet. */
+.eingabe-befund {
+  margin: var(--abstand-1) 0 0;
+  padding: var(--abstand-1) var(--abstand-2);
+  border-left: 2px solid var(--fehler);
+  color: var(--fehler);
+  font-size: 0.8125rem;
+}
+
+.eingabe-befund[hidden] {
+  display: none;
+}
+
+/* Die Beschriftung liegt in der linken oberen Ecke ihrer Kachel. Ohne sie
+   ist die Zuordnung zur räumlichen Ansicht Ratesache. */
+.netz-marke {
+  align-self: start;
+  justify-self: start;
+  z-index: 1;
+  margin: calc(var(--netz-feld) * -0.5) 0 0 calc(var(--netz-feld) * -0.1);
+  font-size: 0.75rem;
+  color: var(--text-leise);
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------- Bedienelemente */
+
+button {
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: var(--sperrung);
+  text-transform: uppercase;
+  color: var(--grund-1);
+  background: linear-gradient(180deg, var(--gold-hell), var(--gold));
+  border: 1px solid var(--gold-dunkel);
+  border-radius: var(--ecke-schaltflaeche);
+  /* Glanz an der oberen Kante, nicht auf der Fläche. */
+  box-shadow: var(--glanz-kante);
+  padding: var(--abstand-1) var(--abstand-2);
+  cursor: pointer;
+}
+
+button:hover {
+  background: linear-gradient(180deg, var(--gold-hell), var(--gold-hell));
+}
+
+button:focus-visible {
+  outline: 2px solid var(--gold-hell);
+  outline-offset: 2px;
+}
+
+/* Ruhende Schaltfläche: dunkel mit Goldrand, wie das «Ausblenden» der
+   Vorlage. Gold als Fläche bleibt dem aktiven Zustand vorbehalten. */
+button.ruhend {
+  color: var(--gold);
+  background: var(--grund-2);
+  box-shadow: none;
+}
+
+/* Gesperrt heißt zurückgenommen und nicht abwesend, 4T-0063.
+
+   **Die Füllung fällt weg, und zwar nach der Regel über dieser Zeile:** Gold
+   als Fläche bleibt dem aktiven Zustand vorbehalten. Ohne sie stand die
+   gesperrte Beschriftung des «Abspielen» mit 1,11 zu 1 auf Gold und war
+   unlesbar, während der Rand daneben voll durchschlug. Mit ihr sehen alle
+   gesperrten Schaltflächen gleich aus.
+
+   **Der Unterschied ist einer der Helligkeit und nicht des Farbtons.** Beide
+   Werte behalten den Ton ihres Ausgangs und verlieren an Leuchtdichte; das
+   trägt bis zur vollständigen Farbenblindheit. Eine zweite Randart schied
+   aus, weil gestrichelt bei den Lektionspunkten schon «übersprungen» sagt. */
+button:disabled {
+  color: var(--text-gesperrt);
+  background: var(--grund-2);
+  border-color: var(--gold-gesperrt);
+  box-shadow: none;
+  cursor: default;
+}
+
+button:disabled:hover {
+  color: var(--text-gesperrt);
+  background: var(--grund-2);
+  border-color: var(--gold-gesperrt);
+}
+
+/* Das Kürzel trägt seine Farbe aus einer eigenen Klasse und bliebe sonst in
+   voller Stärke stehen, während die Notation darüber zurücktritt. */
+button:disabled .zugtaste-kuerzel {
+  color: var(--text-gesperrt);
+}
+
+button.ruhend:hover {
+  color: var(--gold-hell);
+  border-color: var(--gold);
+}
+
+/* Segmentschalter. Genau ein Segment ist aktiv und trägt den Goldverlauf. */
+.segmente {
+  display: flex;
+  border: var(--zierlinie);
+  border-radius: var(--ecke-schaltflaeche);
+  overflow: hidden;
+}
+
+.segmente button {
+  flex: 1;
+  border: 0;
+  border-radius: 0;
+  color: var(--text-leise);
+  background: var(--grund-2);
+  box-shadow: none;
+}
+
+.segmente button[aria-pressed='true'] {
+  color: var(--grund-1);
+  background: linear-gradient(180deg, var(--gold-hell), var(--gold));
+  box-shadow: var(--glanz-kante);
+}
+
+/* Kippschalter. Es gibt kein eigenes Element dafür, deshalb ein Kästchen
+   ohne Standardaussehen. */
+.kippschalter {
+  appearance: none;
+  width: 2.5rem;
+  height: 1.25rem;
+  flex: none;
+  border: var(--zierlinie);
+  border-radius: 1rem;
+  background: var(--grund-2);
+  position: relative;
+  cursor: pointer;
+}
+
+.kippschalter::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: calc(1.25rem - 6px);
+  height: calc(1.25rem - 6px);
+  border-radius: 50%;
+  background: var(--text-leise);
+  transition:
+    left 0.15s ease,
+    background 0.15s ease;
+}
+
+.kippschalter:checked {
+  background: linear-gradient(180deg, var(--gold-hell), var(--gold));
+  border-color: var(--gold-dunkel);
+  box-shadow: var(--glanz-kante);
+}
+
+.kippschalter:checked::after {
+  left: calc(100% - 1.25rem + 3px);
+  background: var(--grund-1);
+}
+
+.kippschalter:focus-visible {
+  outline: 2px solid var(--gold-hell);
+  outline-offset: 2px;
+}
+
+/* Wer Bewegung abgeschaltet hat, bekommt auch hier keine. */
+@media (prefers-reduced-motion: reduce) {
+  .kippschalter::after {
+    transition: none;
+  }
+}
+
+/* Auswahlfeld. Der Pfeil ist gezeichnet und keine Grafikdatei, weil die
+   Auslieferungsdatei ohne Verweis nach außen auskommt. */
+select {
+  font: inherit;
+  width: 100%;
+  color: var(--text);
+  background: var(--grund-2);
+  border: var(--zierlinie);
+  border-radius: var(--ecke-schaltflaeche);
+  padding: var(--abstand-1) var(--abstand-2);
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------ Tastenfeld
+
+   Achtzehn Drucktasten in sechs Dreierblöcken, je zwei Blöcke nebeneinander.
+   Jede Taste nennt oben ihre Notation und darunter ihre Tastenkombination und
+   ist damit zugleich die Übersicht der Belegung. */
+
+.tastenfeld {
+  display: flex;
+  flex-direction: column;
+  gap: var(--abstand-2);
+  margin-top: var(--abstand-2);
+}
+
+.tastenfeld-zeile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--abstand-3);
+}
+
+.tastenblock {
+  display: flex;
+  gap: var(--abstand-1);
+}
+
+.zugtaste {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 3.25rem;
+  padding: var(--abstand-1);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.zugtaste-notation {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.zugtaste-kuerzel {
+  font-size: 0.6875rem;
+  color: var(--text-leise);
+  font-family: var(--schrift);
+}
+
+.zugtaste:hover .zugtaste-kuerzel {
+  color: var(--gold-hell);
+}
+
+/* Kurze Rückmeldung, wenn der Zug über die Tastatur kam. Ohne sie bleibt
+   offen, ob der Tastendruck angekommen ist, und man tippt ein zweites Mal. */
+.zugtaste.gedrueckt {
+  animation: tastenschlag 0.35s ease-out;
+}
+
+@keyframes tastenschlag {
+  from {
+    background: var(--gold);
+    color: var(--grund-1);
+  }
+  to {
+    background: var(--grund-2);
+    color: var(--gold);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zugtaste.gedrueckt {
+    animation: none;
+    border-color: var(--gold-hell);
+  }
+}
+
+/* ------------------------------------------------- Wiedergabe der Lösung
+
+   Die Steuerung steht in einer eigenen Reihe unter dem Anschluss an den
+   Löser, der Zähler darunter. Er ist dickengleich gesetzt, damit er beim
+   Weiterzählen nicht springt und das Auge die Stelle findet, ohne sie zu
+   suchen. */
+
+.wiedergabe-steuerung {
+  margin-top: var(--abstand-1);
+}
+
+.wiedergabe-stand {
+  margin: var(--abstand-2) 0 0;
+  color: var(--gold);
+}
+
+/* ------------------------------------------------- Anstehender Zug, 4T-0034
+
+   Drei Anzeigen im Bereich «Erklärung»: der anstehende Zug, der laufende
+   Schritt und die Zugliste. */
+
+/* Die Notation steht groß und in Gold. Das ist kein Verstoß gegen «Fließtext
+   niemals in Gold»: Sie ist ein bis drei Zeichen und wird wiedererkannt, nicht
+   gelesen. Der Klartext darunter trägt die Lesearbeit und steht in --text. */
+.anstehend-notation {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: var(--zeilenhoehe-ueberschrift);
+  color: var(--gold);
+}
+
+.anstehend-klartext {
+  margin: var(--abstand-1) 0 0;
+}
+
+/* Woraus der Griff entsteht, 4T-0040. Leiser als die Ansage darüber: Sie ist
+   die Anweisung, dies die Auskunft, welche Züge der Lösung darin stecken. */
+.anstehend-griff {
+  margin: var(--abstand-1) 0 0;
+  font-size: 0.875rem;
+  color: var(--text-leise);
+}
+
+.anstehend-schritt {
+  margin: var(--abstand-3) 0 0;
+  padding-top: var(--abstand-2);
+  border-top: var(--zierlinie);
+}
+
+/* Die Begründung des laufenden Schrittes, 4T-0052. Sie trägt denselben Balken
+   und dieselbe Kursive wie die Vorstellung in der Lektion, aus der sie stammt.
+   Das ist kein Zierrat, sondern die Aussage: Wer sie hier liest und dort
+   wiederfindet, soll sehen, dass es derselbe Satz ist und nicht ein zweiter
+   über dieselbe Sache. */
+.anstehend-begruendung {
+  margin: var(--abstand-2) 0 0;
+  padding-left: var(--abstand-2);
+  border-left: 2px solid var(--gold-dunkel);
+  font-style: italic;
+}
+
+.anstehend-lektion {
+  margin-top: var(--abstand-2);
+}
+
+/* Die Liste bekommt eine feste Höhe und führt die Stelle mit. Ohne Begrenzung
+   schöbe eine Lernlösung von 152 Zügen alles darunter aus dem Bild. */
+.zugliste {
+  max-height: 16rem;
+  overflow-y: auto;
+  font-size: 0.875rem;
+}
+
+.zugliste-marke {
+  margin: var(--abstand-2) 0 var(--abstand-1);
+  font-size: 0.75rem;
+}
+
+.zugliste-marke:first-child {
+  margin-top: 0;
+}
+
+/* Die Züge stehen ohne Lücke nebeneinander und halten ihren Abstand über das
+   eigene Polster. Mit einer Lücke dazwischen bräche die Linie unter einer
+   gelernten Zugfolge zwischen je zwei Zügen auf, und aus der Klammer würde
+   eine Reihe von Strichen. */
+.zugliste-reihe {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+/* Der durchsichtige Rand steht von Anfang an. Ohne ihn rückten die Züge um
+   einen Bildpunkt zur Seite, sobald eine Klammer erscheint. */
+.zugliste-zug {
+  padding: 2px 3px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+}
+
+/* Die aktuelle Stelle. Dunkle Schrift auf Gold steht im Design-Konzept mit
+   8,95 zu 1 und ist damit belegt. Markiert ist der ganze anstehende Griff. */
+.zugliste-zug.jetzt {
+  color: var(--grund-1);
+  background: var(--gold);
+  font-weight: 600;
+}
+
+/* ------------------------------------- Zwei Kennzeichnungen in der Zugliste
+
+   Aus 4T-0040. Die gelernte Zugfolge und der Griff überlappen einander: Von
+   16 390 Griffen berühren 11 807 eine Folge an ihrem Rand und 4 583 zwei,
+   keiner liegt in ihrem Inneren. Sie können sich deshalb nicht schachteln.
+
+   Getrennt werden sie über den Ort und nicht über die Farbe: Die Folge steht
+   als Linie unter den Zügen, der Griff als eckige Klammer darüber. Beides ist
+   Form und trägt damit auch, wenn die Farbe nicht ankommt. */
+
+.zugliste-zug[data-folge] {
+  border-bottom-color: var(--gold-dunkel);
+  border-radius: 0;
+}
+
+.zugliste-zug[data-folge='anfang'] {
+  border-bottom-left-radius: 3px;
+  border-left-color: var(--gold-dunkel);
+}
+
+.zugliste-zug[data-folge='ende'] {
+  border-bottom-right-radius: 3px;
+  border-right-color: var(--gold-dunkel);
+}
+
+/* Auch der Name einer Folge kann in einer Klammer stehen; dann trägt er sie
+   mit, statt sie zu unterbrechen. */
+.zugliste-zug[data-griff],
+.zugliste-folgemarke[data-griff] {
+  border-top-color: var(--gold-dunkel);
+  border-radius: 0;
+}
+
+.zugliste-zug[data-griff='anfang'] {
+  border-top-left-radius: 3px;
+  border-left-color: var(--gold-dunkel);
+}
+
+.zugliste-zug[data-griff='ende'] {
+  border-top-right-radius: 3px;
+  border-right-color: var(--gold-dunkel);
+}
+
+/* Der Name der gelernten Zugfolge, vor ihrem ersten Zug.
+
+   **Der Abstand liegt links und nicht rechts.** Er gehört zu dem, was folgt,
+   und Nähe ist das Mittel, das diese Zugehörigkeit herstellt. Die erste
+   Fassung hatte es umgekehrt, und der Product Owner hat den Namen am
+   2026-08-14 folgerichtig dem vorangehenden Zug zugeordnet.
+
+   Als Polster und nicht als Rand, damit eine Klammer, die über den Namen
+   hinwegläuft, keine Lücke bekommt. */
+.zugliste-folgemarke {
+  align-self: center;
+  padding: 2px 2px 2px var(--abstand-1);
+  border: 1px solid transparent;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.zugliste-folgemarke:first-child {
+  padding-left: 0;
+}
+
+/* Der eine Zug, der den ganzen Griff ersetzt. Er steht hinter der Klammer und
+   ist die eigentliche Auskunft: So viel dreht der Anwender.
+
+   Gold ist hier kein Verstoß gegen «Fließtext niemals in Gold», aus demselben
+   Grund wie bei der Notation des anstehenden Zuges: Es sind zwei bis vier
+   Zeichen, die wiedererkannt und nicht gelesen werden. */
+.zugliste-griffzug {
+  align-self: center;
+  padding: 0 var(--abstand-1);
+  color: var(--gold);
+  font-weight: 600;
+}
+
+/* ------------------------------------------ Legende der Zeichen, 4T-0041
+
+   Zwei Bänder, jedes an dem Ort, an dem seine Zeichen gelten: die beiden am
+   Würfel in der Bühne, die vier der Zugfolge unter der Zugliste. Sie treten an
+   die Stelle zweier Erklärzeilen im Fließtext, denn ein Zeichen erklärt sich
+   am Muster und nicht im Satz.
+
+   **Kein Muster ist nachgezeichnet.** Sie tragen dieselben Klassen und
+   Attribute wie die Sache selbst, `stein-flaeche` mit `data-saum` und
+   `data-lauf` beim Würfel, `zugliste-zug` mit `data-folge`, `data-griff` und
+   `jetzt` bei der Liste. Wer eines der Zeichen ändert, ändert das Muster mit.
+   Ein nachgezeichnetes bliebe beim nächsten Eingriff stehen und wäre die
+   zweite Wahrheit, die niemand bemerkt, weil beide selten nebeneinander
+   gesehen werden.
+
+   **Zwei Spalten, die linke nach dem breitesten Muster.** Ohne feste Spalte
+   begänne jeder Satz an anderer Stelle, je nachdem wie breit sein Muster ist,
+   und eine Legende lebt davon, dass das Auge die Zeilen abfährt. */
+/* Ohne eigenen oberen Abstand, 4T-0064. Er ist entstanden, als die
+   Überschrift darüber allen Abstand nach unten trug und keinen nach oben;
+   seit der Umkehrung liefert sie ihn selbst, und ein zweiter schöbe die Marke
+   an den Text darüber. */
+.zeichenband {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--abstand-2);
+}
+
+/* Die Absätze halten ihren Abstand über den Spalt des Rasters. Ihr eigener
+   oberer Rand aus `.erklaerung` verschöbe sie gegen ihr Muster. */
+.zeichenband > .erklaerung {
+  margin: 0;
+}
+
+/* Das Muster des Würfels. **Die Kantenlänge steht fest und folgt nicht der
+   Schrift**, aus demselben Grund wie beim Würfel selbst: Ein Würfelfeld ist
+   kein Text und soll nicht wachsen, wenn jemand die Schrift vergrößert, um
+   besser zu lesen. 34 px ist die untere Klemme von `--kante`; darunter wird
+   die Laufkante zu fein, um sie als Richtung zu erkennen, denn sie misst 12
+   Prozent der Kante. */
+.zeichen-muster {
+  display: flex;
+  align-items: center;
+}
+
+.zeichen-feld {
+  --kante: 34px;
+  position: relative;
+  width: var(--kante);
+  height: var(--kante);
+  margin-right: calc(var(--kante) * 0.08);
+}
+
+/* Das Seitenkreuz als Legendenmuster, 4T-0065. Es ist kleiner als in der
+   Buehne und traegt seine Groesse selbst: Dort folgt sie der Kantenlaenge des
+   Wuerfels, hier der Zeile, in der es steht. */
+.zeichen-kreuz .seitenkreuz {
+  position: relative;
+  top: 0;
+  right: auto;
+  left: 0;
+  width: 34px;
+  height: 34px;
+  margin-right: 3px;
+}
+/* Das Muster der Zugliste. Dieselbe Schriftgröße wie die Liste selbst, sonst
+   stünden dort größere Züge als in der Sache, die sie erklären. */
+.zeichen-zuege {
+  font-size: 0.875rem;
+}
+
+/* ------------------------------------------------- Lektionsbereich, 4T-0045
+
+   Er steht im Bereich «Erklärung» über der Anzeige des anstehenden Zuges und
+   bleibt sichtbar, während eine Wiedergabe läuft.
+
+   Alle Maße in rem und keines in Pixeln: Die Schriftgröße ist in vier Stufen
+   einstellbar, und der Bereich besteht überwiegend aus Text. Ein Punkt der
+   Übersicht, der in Pixeln bemessen wäre, bliebe bei «Sehr groß» so klein wie
+   bei «Klein» und trüge seine Ziffer nicht mehr.
+
+   Ohne jede Bewegung. Es gibt hier nichts zu zeigen, was ein Übergang besser
+   erklärte, und die Einstellung «Bewegung: Aus» darf keinen Zustand
+   verstecken. */
+
+.lektion {
+  margin-bottom: var(--abstand-3);
+}
+
+.lektion-zaehlung {
+  margin: 0 0 var(--abstand-1);
+  font-size: 0.8125rem;
+}
+
+/* Ohne gesperrte Versalien, anders als die Bereichsmarken darüber: Der Titel
+   ist ein Wort und keine Marke, und «Twisting the corners» trifft die
+   Zeichengrenze des Design-Konzepts genau. */
+.lektion-titel {
+  margin: 0 0 var(--abstand-2);
+  font-size: 1.125rem;
+}
+
+/* Die zehn Lektionen als Reihe. Sie ist Navigation und Fortschrittsanzeige in
+   einem; zwei getrennte Elemente sagten dasselbe zweimal. */
+.lektion-uebersicht {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--abstand-1);
+  margin-bottom: var(--abstand-2);
+}
+
+.lektion-punkt {
+  min-width: 2.25rem;
+  padding: var(--abstand-1) 0;
+  text-align: center;
+  color: var(--gold);
+  background: var(--grund-2);
+  border: 1px solid var(--gold-dunkel);
+  box-shadow: none;
+}
+
+/* **Der Zustand hängt nicht allein an der Farbe.** Dieselbe Haltung wie bei
+   der Kennzeichnung der Würfelfelder: Füllung und Randart tragen die Aussage
+   mit, damit sie auch ohne Farbunterscheidung ankommt. Abgeschlossen ist
+   gefüllt, offen umrandet, übersprungen gestrichelt, gesperrt zurückgenommen. */
+.lektion-punkt[data-zustand='abgeschlossen'] {
+  color: var(--grund-1);
+  background: linear-gradient(180deg, var(--gold-hell), var(--gold));
+  border-color: var(--gold-dunkel);
+  box-shadow: var(--glanz-kante);
+}
+
+.lektion-punkt[data-zustand='uebersprungen'] {
+  border-style: dashed;
+  color: var(--text-leise);
+}
+
+/* Dieselben Werte wie bei jeder gesperrten Schaltfläche, 4T-0063. Die Regel
+   steht eigens hier, weil sie button:disabled in der Spezifität schlägt. */
+.lektion-punkt[data-zustand='gesperrt'] {
+  color: var(--text-gesperrt);
+  border-color: var(--gold-gesperrt);
+  background: var(--grund-1);
+}
+
+/* Die angezeigte Lektion. Ein Ring außerhalb des Randes, damit er sich mit
+   jeder der vier Zustandsdarstellungen verträgt und keine von ihnen
+   überschreibt. */
+.lektion-punkt[aria-current='true'] {
+  outline: 2px solid var(--gold-hell);
+  outline-offset: 2px;
+}
+
+.lektion-schritte {
+  margin-bottom: var(--abstand-2);
+}
+
+/* Der Lektionstext rollt in seinem eigenen Bereich, 4T-0060, wie die Zugliste
+   seit 4T-0034. **Der Ertrag ist nicht die Höhe, sondern ihre Beständigkeit:**
+   Gemessen am 2026-08-17 bei 1920 × 1080 reicht der Text von 769 px bei
+   Lektion 0 bis 1532 px bei Lektion 9, und die Seitenhöhe schwankte deshalb um
+   763 px je nachdem, welche Lektion offen stand. Mit dem Deckel ist sie in
+   jedem Fall dieselbe.
+
+   **Das Maß steht in `rem` und nicht in Pixeln**, damit bei jeder der vier
+   Schriftgrößen gleich viel Text steht und nicht gleich viel Fläche. Der
+   größte einzelne Absatz misst 11,2 rem; die Zusage des Tasks, dass ein Absatz
+   vollständig steht, ist damit dreifach erfüllt. */
+.lektion-text {
+  margin-bottom: var(--abstand-2);
+  max-height: 34rem;
+  overflow-y: auto;
+}
+
+/* Ein Rollbereich ohne fokussierbaren Inhalt nimmt der Browser von sich aus in
+   die Tastaturreihenfolge auf, damit die Pfeiltasten ihn bewegen können. Ohne
+   diese Zeile stünde dort sein eigener Ring, der die Farben des Betriebssystems
+   trägt und nicht die dieser Oberfläche. */
+.lektion-text:focus-visible {
+  outline: 2px solid var(--gold-hell);
+  outline-offset: 2px;
+}
+
+.lektion-absatz {
+  margin: 0 0 var(--abstand-2);
+}
+
+.lektion-absatz:last-child {
+  margin-bottom: 0;
+}
+
+/* Die begleitende Vorstellung aus Abschnitt 5 des Didaktik-Konzepts. Sie ist
+   kein weiterer Erklärungsabsatz, sondern das Bild, an dem der Anwender die
+   Lektion später wiedererkennt, und sie wird deshalb abgesetzt. Derselbe Balken
+   wie bei der Rückmeldung, denn beide sagen «dies gilt für dich, nicht für den
+   Würfel». Ohne Farbwechsel: Gold trägt hier bereits die Aufmerksamkeit. */
+.lektion-absatz[data-baustein='vorstellung'] {
+  padding-left: var(--abstand-2);
+  border-left: 2px solid var(--gold-dunkel);
+  font-style: italic;
+}
+
+/* Die Anweisung für die Übung steht unmittelbar über den Schaltflächen, mit
+   denen sie ausgeführt wird. Ein zusätzlicher Abstand davor trennt sie von der
+   Erklärung, ohne eine zweite Überschrift zu brauchen. */
+.lektion-absatz[data-baustein='aufgabe'] {
+  margin-top: var(--abstand-3);
+}
+
+/* Die acht vorgeführten Zeichen der Notation. Den Umbruch bringt bereits
+   `datei-reihe` mit; hier steht allein der Abstand, und der nur, wenn die Reihe
+   überhaupt gefüllt ist. */
+.lektion-zuege:not(:empty) {
+  margin-bottom: var(--abstand-2);
+}
+
+.lektion-folgen:not(:empty) {
+  margin-bottom: var(--abstand-2);
+}
+
+.lektion-ohne-folge[hidden] {
+  display: none;
+}
+
+.lektion-uebung {
+  margin-bottom: var(--abstand-2);
+}
+
+.lektion-uebung button[hidden],
+.lektion-schritte button[hidden] {
+  display: none;
+}
+
+/* Die Auskunft der Hilfe aus 4T-0051. Derselbe Balken wie bei Vorstellung und
+   Rückmeldung, denn sie sagt wie diese «dies gilt für dich, nicht für den
+   Würfel». Zurückhaltender als die Rückmeldung, ohne eigene Schriftfarbe: Sie
+   ist eine Auskunft und keine Nachricht über einen Fortschritt. */
+.lektion-hilfe {
+  margin: 0 0 var(--abstand-2);
+  padding: var(--abstand-1) var(--abstand-2);
+  border-left: 2px solid var(--gold-dunkel);
+  font-size: 0.8125rem;
+}
+
+.lektion-hilfe[hidden] {
+  display: none;
+}
+
+.lektion-stand {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-leise);
+}
+
+/* Die Rückmeldung der Übung. Sie steht als Balken links und nicht als Fläche:
+   Eine farbige Fläche neben dem Würfel zöge den Blick vom Gegenstand ab, und
+   genau dorthin gehört er beim Üben. */
+.lektion-rueckmeldung {
+  margin: var(--abstand-1) 0 0;
+  padding: var(--abstand-1) var(--abstand-2);
+  border-left: 2px solid var(--gold);
+  color: var(--gold);
+  font-size: 0.8125rem;
+}
+
+.lektion-rueckmeldung[data-art='erfolg'] {
+  border-left-color: var(--erfolg);
+  color: var(--erfolg);
+}
+
+.lektion-rueckmeldung[hidden] {
+  display: none;
+}
+
+/* Erklärung unter einem Bedienelement. Der Einstellungs-Katalog begründet
+   jeden Eintrag; diese Begründung gehört an das Element, nicht in ein
+   Handbuch. */
+.erklaerung {
+  margin: var(--abstand-1) 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-leise);
+}
+
+.feld {
+  margin-bottom: var(--abstand-3);
+}
+
+.feld:last-child {
+  margin-bottom: 0;
+}
+
+.feld > label {
+  display: block;
+  margin-bottom: var(--abstand-1);
+}
+
+.feld-waagerecht {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--abstand-2);
+}
+
+/* Die Fußzeile eines Feldes trägt den Vorgabewert und, sobald der Wert davon
+   abweicht, den Weg zurück. Die Schaltfläche erscheint nur dann: Ein
+   Rücksetzen, das nichts zurücksetzt, ist Ballast in jeder Zeile. */
+.feld-fuss {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--abstand-2);
+  margin-top: var(--abstand-1);
+}
+
+.zuruecksetzen {
+  font-size: 0.75rem;
+  letter-spacing: var(--sperrung);
+  text-transform: uppercase;
+  color: var(--gold);
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.zuruecksetzen:hover {
+  color: var(--gold-hell);
+  background: none;
+}
+
+.zuruecksetzen[hidden] {
+  display: none;
+}
+
+/* Vorschau der Würfelfarben. Sie zeigt die Wirkung der Palette an Ort und
+   Stelle, ohne dass der Würfel gedreht werden muss, und bleibt auch dann
+   sinnvoll, wenn er dasteht. */
+.farbvorschau {
+  display: flex;
+  gap: var(--abstand-1);
+  margin-top: var(--abstand-1);
+}
+
+.farbvorschau span {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--ecke-schaltflaeche);
+  /* Die Fugen der Materialanmutung, im Kleinen. */
+  border: 1px solid var(--grund-0);
+  box-shadow: var(--glanz-kante);
+}
+
+/* Hinweiszeile, etwa wenn der Browserspeicher fehlt. */
+.hinweis {
+  margin: var(--abstand-2) 0 0;
+  padding: var(--abstand-1) var(--abstand-2);
+  border-left: 2px solid var(--warnung);
+  color: var(--warnung);
+  font-size: 0.8125rem;
+}
+
+.hinweis[hidden] {
+  display: none;
+}
+
+.datei-reihe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--abstand-1);
+}
+
+/* Die erzeugte Verwürfelung in Notation, 4T-0083. Sie steht unmittelbar unter
+   der Reihe, die sie erzeugt, und trägt deshalb den kleinen Abstand.
+
+   **Ohne die Zeilenlänge aus der Grundregel für Absätze.** Die gilt für
+   Lesetext, und dort ist sie richtig; eine Zugfolge aus zwanzig Zügen ist
+   kein Lesetext, und ein Umbruch mitten in ihr kostete eine zweite Zeile Höhe
+   für nichts.
+
+   **Die Beschriftung tritt zurück, die Züge nicht.** Der Anwender überträgt
+   die Folge auf seinen eigenen Würfel; sie in Leiseton zu setzen hieße, das
+   Wesentliche der Zeile schlechter lesbar zu machen als ihr Beiwerk. */
+.verwuerfelung {
+  margin: var(--abstand-1) 0 0;
+  max-width: none;
+  font-size: 0.8125rem;
+  color: var(--text-leise);
+}
+
+.verwuerfelung .notation {
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.verwuerfelung[hidden] {
+  display: none;
+}

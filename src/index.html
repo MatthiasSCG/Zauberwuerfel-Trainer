@@ -1,0 +1,713 @@
+<!doctype html>
+<!--
+  Gerüst der Anwendung. Beim Bau in 2A-0011 werden Stil und Bündel in diese
+  Datei eingesetzt; während der Entwicklung stehen sie daneben und werden
+  über den Server aus scripts/server.mjs geladen. Ein Browser lädt über
+  file:// keine ES-Module, deshalb der Umweg.
+
+  Jeder sichtbare Text trägt seinen Bezeichner in data-text und wird beim
+  Start aus src/i18n gefüllt. Der deutsche Wortlaut bleibt im Dokument
+  stehen, damit die Datei beim Lesen verständlich ist; maßgeblich ist der
+  Bezeichner. Eine Prüfung weist nach, dass zu jedem davon beide Sprachen
+  vorliegen.
+
+  Verweise nach außen sind ausgeschlossen, auch auf Schriften. Eine Prüfung
+  in test/oberflaeche.test.js belegt das.
+-->
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zauberwuerfel-Trainer</title>
+    <link rel="stylesheet" href="stil.css" />
+  </head>
+  <body>
+    <div class="seite">
+      <header class="kopf">
+        <h1 class="marke-titel" data-text="kopf.titel">Zauberwuerfel-Trainer</h1>
+        <hr class="marke-linie" />
+        <p class="marke-unterzeile" data-text="kopf.unterzeile">Lernpfad und Löser</p>
+      </header>
+
+      <main class="raster">
+        <!-- Der Würfel steht im Mittelpunkt und bekommt den größten
+             zusammenhängenden Bereich. Gefüllt wird er in 4T-0027. -->
+        <!-- Der Würfel wird von src/view/wuerfel.js in den Halter eingesetzt.
+             Sechs mal neun Felder als Auszeichnung zu schreiben hieße, die
+             Geometrie ein zweites Mal zu führen. -->
+        <section id="buehne" class="flaeche" aria-labelledby="buehne-marke">
+          <h2 id="buehne-marke" class="marke-bereich" data-text="bereich.wuerfel">Würfel</h2>
+          <div id="wuerfel-halter"></div>
+          <!-- Das flache Netz steht an derselben Stelle. Sichtbar ist immer
+               genau eine der beiden Ansichten, gesteuert über Eintrag 5 des
+               Einstellungs-Katalogs. -->
+          <div id="netz-halter" hidden></div>
+          <button type="button" class="ruhend" id="ansicht-zurueck" data-text="ansicht.zurueck">
+            Ansicht zurücksetzen
+          </button>
+          <p class="erklaerung" data-text="ansicht.hinweis">
+            Ziehen dreht den Blick. Die Notation bleibt davon unberührt.
+          </p>
+
+          <!-- Legende der Zeichen am Würfel, 4T-0041. Sie steht hier und nicht
+               beim Lösungsweg, wo ihr Text bis dahin stand: Saum und Laufkante
+               gehören zum Würfel und erscheinen auch beim Vorführen einer
+               Zugfolge in der Lektion, also lange bevor es eine Lösung gibt.
+
+               **Sie kostet keine Seitenhöhe.** Der Inhalt der Bühne endet bei
+               798 px, ihr Kasten reicht bis 1074 px beim Lernen und bis 1370 px
+               beim Lösen, weil das Raster ihn auf die Höhe der Begleitung
+               zieht. Am 2026-08-18 in beiden Tätigkeiten, vier Schriftgrößen
+               und beiden Ansichten gemessen; der Leerraum trägt das Band in
+               jedem Fall.
+
+               **Die Muster sind keine Zeichnungen, sondern dieselben Felder wie
+               am Würfel.** Ein Halter gibt die Größe, die `stein-flaeche` darin
+               ist absolut gesetzt wie im Würfelkörper, und `data-saum` und
+               `data-lauf` sind die Attribute, die auch die Hervorhebung eines
+               anstehenden Zuges setzt. Wer den Saum ändert, ändert das Muster
+               mit; eine nachgezeichnete Legende bliebe beim nächsten Eingriff
+               stehen.
+
+               Die Farbe steht hier als Auszeichnung und nicht im Programm. Das
+               ist der Unterschied zum Würfel: Dort wandert sie mit jedem Zug,
+               hier steht sie fest, und drei feste Werte sind keine zweite
+               Wahrheit über den Zustand. Gesetzt wird `background-color` und
+               nicht die Kurzform `background`: Diese löschte das Hintergrundbild
+               mit und damit die Würfelaugen, die `data-farbe` daneben gerade
+               herbeiholen soll. Das Programm hält es in `zeigeFacelets` genauso.
+
+               **Die beiden Muster zeigen zwei verschiedene Teile der Schicht,
+               und das ist keine Nachlässigkeit.** Am Würfel trägt der Saum alle
+               21 Flächen, die Laufmarke aber nur die zwölf des Rings. Das erste
+               Muster ist deshalb ein Ausschnitt der Deckfläche und trägt allein
+               den Saum, das zweite ein Ausschnitt des Rings und trägt beides.
+
+               **Weder Liste noch Beschreibungsliste.** Ein `dl` wäre die
+               naheliegende Form für eine Legende, hätte hier aber leere
+               Begriffe: Das Muster ist mit `aria-hidden` aus der Vorlesehilfe
+               genommen, weil es rein grafisch ist. Ein `ul` bräuchte
+               `display: contents` an jedem Eintrag, damit die Texte fluchten,
+               und stellte damit eine Frage nach der Semantik, die sich hier
+               vermeiden lässt. Geblieben sind Muster und Absatz im Wechsel als
+               unmittelbare Rasterelemente. Vorgelesen wird eine Folge von
+               Sätzen, und jeder benennt sein Zeichen selbst. -->
+          <h3 class="marke-bereich" data-text="zeichen.wuerfel">Zeichen am Würfel</h3>
+          <div class="zeichenband">
+            <span class="zeichen-muster" aria-hidden="true">
+              <span class="zeichen-feld">
+                <span
+                  class="stein-flaeche"
+                  style="background-color: var(--seite-f)"
+                  data-farbe="F"
+                  data-saum
+                ></span>
+              </span>
+              <span class="zeichen-feld">
+                <span
+                  class="stein-flaeche"
+                  style="background-color: var(--seite-r)"
+                  data-farbe="R"
+                  data-saum
+                ></span>
+              </span>
+              <span class="zeichen-feld">
+                <span
+                  class="stein-flaeche"
+                  style="background-color: var(--seite-b)"
+                  data-farbe="B"
+                  data-saum
+                ></span>
+              </span>
+            </span>
+            <p class="erklaerung" data-text="zeichen.saum">
+              Ein Saum um die Felder zeigt, welche Schicht sich dreht.
+            </p>
+            <span class="zeichen-muster" aria-hidden="true">
+              <span class="zeichen-feld">
+                <span
+                  class="stein-flaeche"
+                  style="background-color: var(--seite-f)"
+                  data-farbe="F"
+                  data-saum
+                  data-lauf="rechts"
+                ></span>
+              </span>
+              <span class="zeichen-feld">
+                <span
+                  class="stein-flaeche"
+                  style="background-color: var(--seite-r)"
+                  data-farbe="R"
+                  data-saum
+                  data-lauf="rechts"
+                ></span>
+              </span>
+              <span class="zeichen-feld">
+                <span
+                  class="stein-flaeche"
+                  style="background-color: var(--seite-b)"
+                  data-farbe="B"
+                  data-saum
+                  data-lauf="rechts"
+                ></span>
+              </span>
+            </span>
+            <p class="erklaerung" data-text="zeichen.lauf">
+              Eine hellere Marke an einer Kante zeigt, in welche Richtung.
+            </p>
+            <!-- Das Seitenkreuz aus 4T-0065. Die Werte sind die der
+                 Ausgangsansicht, also genau das, was der Anwender beim Start
+                 in der Ecke der Bühne sieht. Sie stehen hier fest im Dokument,
+                 weil ein Muster keinen Blick hat, den es abbilden könnte;
+                 gerechnet werden sie von `blickrichtungen` für den Würfel
+                 selbst. -->
+            <span class="zeichen-muster zeichen-kreuz" aria-hidden="true">
+              <span class="seitenkreuz seitenkreuz-vorn">
+                <span class="seitenkreuz-strahl" style="--laenge: 27.9%; --winkel: -90deg"></span>
+                <span
+                  class="seitenkreuz-marke notation"
+                  style="--richtung-x: 0%; --richtung-y: -37.2%"
+                  >U</span
+                >
+                <span class="seitenkreuz-strahl" style="--laenge: 25.2%; --winkel: 15.2deg"></span>
+                <span
+                  class="seitenkreuz-marke notation"
+                  style="--richtung-x: 32.4%; --richtung-y: 8.8%"
+                  >R</span
+                >
+                <span class="seitenkreuz-strahl" style="--laenge: 19.9%; --winkel: 153.1deg"></span>
+                <span
+                  class="seitenkreuz-marke notation"
+                  style="--richtung-x: -23.6%; --richtung-y: 12%"
+                  >F</span
+                >
+              </span>
+              <!-- Das zweite Kreuz trägt die Gegenrichtungen des ersten, denn
+                   ein Gegenpaar liegt punktsymmetrisch. -->
+              <span class="seitenkreuz seitenkreuz-hinten">
+                <span class="seitenkreuz-strahl" style="--laenge: 27.9%; --winkel: 90deg"></span>
+                <span
+                  class="seitenkreuz-marke notation"
+                  style="--richtung-x: 0%; --richtung-y: 37.2%"
+                  >D</span
+                >
+                <span class="seitenkreuz-strahl" style="--laenge: 25.2%; --winkel: 195.2deg"></span>
+                <span
+                  class="seitenkreuz-marke notation"
+                  style="--richtung-x: -32.4%; --richtung-y: -8.8%"
+                  >L</span
+                >
+                <span class="seitenkreuz-strahl" style="--laenge: 19.9%; --winkel: -26.9deg"></span>
+                <span
+                  class="seitenkreuz-marke notation"
+                  style="--richtung-x: 23.6%; --richtung-y: -12%"
+                  >B</span
+                >
+              </span>
+            </span>
+            <p class="erklaerung" data-text="zeichen.kreuz">
+              Zwei Kreuze in den Ecken benennen die Seiten: links die, die du siehst, rechts die
+              verdeckten.
+            </p>
+          </div>
+          <p class="erklaerung" data-text="zeichen.halb">
+            Bei einer halben Umdrehung steht die Marke auf beiden Seiten, denn dann ist die Richtung
+            gleichgültig.
+          </p>
+
+          <!-- Das Tastenfeld wird von src/input/tastenfeld.js eingesetzt. -->
+          <div id="tastenfeld-halter"></div>
+          <p class="erklaerung" data-text="bewegung.hinweis">
+            Die Buchstaben der Notation drehen die Schichten. Umschalt kehrt die Richtung um, Alt
+            dreht um eine halbe Umdrehung.
+          </p>
+          <div class="datei-reihe">
+            <button type="button" class="ruhend" id="verlauf-zurueck" data-text="verlauf.zurueck">
+              Zurück
+            </button>
+            <button type="button" class="ruhend" id="verlauf-wieder" data-text="verlauf.wieder">
+              Vor
+            </button>
+            <button type="button" class="ruhend" id="verlauf-geloest" data-text="verlauf.geloest">
+              Gelöster Würfel
+            </button>
+            <button
+              type="button"
+              class="ruhend"
+              id="verlauf-verwuerfeln"
+              data-text="verlauf.verwuerfeln"
+            >
+              Verwürfeln
+            </button>
+            <!-- Der dritte Weg, den Würfel auf einen Zustand zu bringen, und
+                 deshalb steht er in dieser Reihe: gelöst, verwürfelt oder von
+                 Hand eingegeben. Ein eigener Bereich mit Marke und Erklärung
+                 kostete gemessene 129 px und schob den Einstieg in das Lösen
+                 von 992 px auf 1121 px, also unter die Bildkante von 1080.
+                 Das verstieße gegen das Höhenbudget aus Abschnitt 7 des
+                 Design-Konzepts. Hier kostet er nichts. 4T-0067. -->
+            <button type="button" class="ruhend" id="eingabe-beginnen" data-text="eingabe.beginnen">
+              Zustand eingeben
+            </button>
+            <button type="button" class="ruhend" id="vorfuehr-folge" data-text="bewegung.folge">
+              Zehn zufällige Züge
+            </button>
+          </div>
+
+          <!-- Die erzeugte Verwürfelung in Notation, 4T-0083. S-0028 AK5
+               verlangt sie zum Nachvollziehen am eigenen Würfel; ohne sie ist
+               «Verwürfeln» allein für den Würfel am Bildschirm brauchbar.
+
+               **Eine Zeile unter der Reihe, ohne eigene Marke und ohne
+               Erklärung.** Ein eigener Bereich kostete Höhe, die das Budget aus
+               Abschnitt 7 des Design-Konzepts nicht hergibt; bei 4T-0067 hat
+               ein Bereich mit Marke und Erklärung gemessene 129 px gekostet.
+
+               **Die Zugfolge trägt keinen `data-text`**, denn sie ist Notation
+               und bleibt in beiden Sprachen dieselbe. Übersetzt wird allein die
+               Beschriftung davor, und die zieht `wendeTexteAn` beim
+               Sprachwechsel wie jede andere nach. -->
+          <p class="verwuerfelung" id="verwuerfelung" hidden>
+            <span data-text="verlauf.verwuerfelungMarke">Verwürfelung:</span>
+            <span class="notation" id="verwuerfelung-zuege"></span>
+          </p>
+
+          <!-- Wiedergabe einer Lösung, 4T-0033. Die Schaltfläche zum Erzeugen
+               ist der Anschluss an den Löser und sitzt in der Verdrahtung,
+               nicht in der Wiedergabe: Diese bekommt eine fertige Zugfolge
+               übergeben und kennt den Löser nicht. Mit dem Lernpfad in
+               2A-0007 tritt die Lektion an ihre Stelle.
+
+               Steuerung und Zugzähler sind mit 4T-0059 zur Anzeige in den
+               Bereich «Erklärung» gewandert. Hier bleibt allein das Erzeugen,
+               denn es muss sichtbar sein, bevor es eine Lösung gibt, und kann
+               deshalb nicht in einem Bereich stehen, den erst die geladene
+               Zugfolge sichtbar macht. -->
+          <!-- Zustandseingabe über das Netz, 4T-0067. Der Bereich ist kein
+               zweiter Modus: Er stellt die Ansicht auf das Netz, klappt den
+               Lernpfad ein und lässt die übrige Bedienung ruhen. Damit folgt er
+               dem Entscheid aus 3E-0017, wo der Umbau in zwei Ansichten
+               zugunsten des Einklappens verworfen worden ist.
+
+               **Er ist ganz verborgen, solange keine Eingabe läuft**, samt
+               seiner Marke und seiner Erklärung. Sein Einstieg ist die
+               Schaltfläche oben in der Reihe der Zustände; ein dauerhaft
+               sichtbarer Bereich kostete Höhe für etwas, das der Anwender
+               selten und einmalig tut.
+
+               Die sechs Farbschaltflächen stehen nicht hier, sondern entstehen
+               in main.js aus der Seitenliste des Kerns. Sie hier zu schreiben
+               wäre derselbe Fehler wie sechs mal neun Felder von Hand. -->
+          <div id="eingabe-flaeche" hidden>
+            <h2 class="marke-bereich" data-text="eingabe.marke">Zustand eingeben</h2>
+            <p class="erklaerung" data-text="eingabe.grund">
+              Für einen Würfel, den das Programm nicht selbst verwürfelt hat: Übertragen Sie seinen
+              Zustand Feldchen für Feldchen auf das Netz.
+            </p>
+            <div class="eingabe-farben" id="eingabe-farben" role="group"></div>
+            <p class="erklaerung" data-text="eingabe.hinweis">
+              Farbe wählen, dann auf die Feldchen tippen. Mit der Tastatur: Pfeiltasten bewegen, die
+              Ziffern 1 bis 6 wählen die Farbe, die Leertaste setzt sie.
+            </p>
+            <!-- Die drei Wege zurück, 4T-0068. Sie sind verschieden gefährlich
+                 und deshalb verschieden gesichert: Eine einzelne Setzung
+                 zurückzunehmen kostet nichts, das Leeren und das Vorbelegen
+                 kosten alles, was bis dahin eingetragen war.
+
+                 **«Übernehmen» steht voran und trägt keine Klasse `ruhend`**,
+                 4T-0070. Es ist die Haupthandlung des Bereichs, so wie
+                 «Lösung erzeugen» die der Bühne ist; die vier übrigen führen
+                 aus ihm heraus oder wieder zurück. -->
+            <div class="datei-reihe">
+              <button type="button" id="eingabe-uebernehmen" data-text="eingabe.uebernehmen">
+                Übernehmen
+              </button>
+              <button type="button" class="ruhend" id="eingabe-zurueck" data-text="eingabe.zurueck">
+                Zurücknehmen · Strg+Z
+              </button>
+              <button type="button" class="ruhend" id="eingabe-leeren" data-text="eingabe.leeren">
+                Alles leeren
+              </button>
+              <button type="button" class="ruhend" id="eingabe-geloest" data-text="eingabe.geloest">
+                Gelöster Würfel
+              </button>
+              <button
+                type="button"
+                class="ruhend"
+                id="eingabe-abbrechen"
+                data-text="eingabe.abbrechen"
+              >
+                Eingabe abbrechen
+              </button>
+            </div>
+            <!-- Der Befund der Lösbarkeitsprüfung in Worten, 4T-0069. Er steht
+                 unter der Reihe und damit unmittelbar unter der Schaltfläche,
+                 die ihn auslöst.
+
+                 **`role="alert"` und nicht `status`**, anders als bei der
+                 Rückmeldung des Lernpfads: Eine abgewiesene Übernahme hält den
+                 Anwender auf, und er soll davon erfahren, während sein Blick
+                 noch am Netz liegt.
+
+                 Er trägt keinen `data-text`, weil sein Wortlaut vom Befund
+                 abhängt und nicht feststeht. Beim Sprachwechsel wird er
+                 zurückgenommen, denn er gilt für eine Prüfung von vorhin. -->
+            <p class="eingabe-befund" id="eingabe-befund" role="alert" hidden></p>
+          </div>
+
+          <h2 class="marke-bereich" data-text="wiedergabe.marke">Lösung</h2>
+          <!-- Zwei Arten, eine Reihe, 4T-0082. Die Lernlösung rechnet im
+               Hauptstrang und ist sofort da; die kurze baut beim ersten Aufruf
+               ihre Tabellen auf und braucht dafür gemessene 1,5 bis 2,7
+               Sekunden im Browser. Deshalb tauscht die Reihe während der
+               Rechnung ihren Inhalt: Fortschritt und Abbruch treten an die
+               Stelle der beiden Erzeugen-Schaltflächen. Ein eigener Bereich
+               kostete Höhe, die das Budget aus Abschnitt 7 des
+               Design-Konzepts nicht hergibt. -->
+          <div class="datei-reihe">
+            <button type="button" id="loesung-erzeugen" data-text="wiedergabe.erzeugen">
+              Lösung erzeugen
+            </button>
+            <button type="button" id="loesung-kurz" data-text="wiedergabe.kurz">
+              Kurze Lösung
+            </button>
+            <!-- Der Fortschritt trägt keinen `data-text`, weil sein Wortlaut
+                 vom Stand der Rechnung abhängt. Beim Sprachwechsel wird er aus
+                 dem gemerkten Stand neu gesetzt, wie der Zähler daneben. -->
+            <p class="erklaerung" id="loesung-fortschritt" role="status" hidden></p>
+            <button
+              type="button"
+              class="ruhend"
+              id="loesung-abbrechen"
+              data-text="wiedergabe.abbrechen"
+              hidden
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              class="ruhend"
+              id="wiedergabe-beenden"
+              data-text="wiedergabe.beenden"
+            >
+              Wiedergabe beenden
+            </button>
+          </div>
+        </section>
+
+        <!-- Zwei Bereiche und keiner, 4T-0062: Diese Hülle trägt keine eigene
+             Fläche und keine Marke, sondern stapelt die beiden, die sie
+             enthält. Sie bleibt, weil das Raster ihren Platz kennt und die
+             Bühne über ihn auf gleiche Höhe gezogen wird; ihn aufzulösen hieße,
+             die Container-Abfrage aus 4T-0058 auf eine andere Breite zu
+             stellen.
+
+             Bis 4T-0062 war dies ein Bereich «Erklärung» mit beidem darin. Der
+             Name meinte zwei Tätigkeiten zugleich und traf damit keine von
+             beiden, und seit 4T-0061 klappt eine davon weg, während die
+             Gestaltung sie weiter als eine Einheit zeigte. -->
+        <div id="begleitung">
+          <!-- Anstehender Zug, laufender Schritt und Zugliste, 4T-0034.
+               Gefüllt wird alles aus der Wiedergabe; die Notation bleibt in
+               beiden Sprachen international, der Klartext daneben nicht.
+
+               **Der Bereich steht seit 4T-0059 über dem Lernpfad und trägt die
+               Steuerung mit.** Wer eine Lösung abspielt, hatte Knopf und
+               Ergebnis zuvor diagonal auseinander, die Steuerung links unten
+               und ihre Wirkung rechts. Dass die Bedienung damit über dem
+               Lektionstext liegt, kostet nichts: Der ganze Bereich ist
+               verborgen, solange keine Zugfolge geladen ist, und beim Lernen
+               steht der Text deshalb wie zuvor ganz oben.
+
+               **Der Bereich ist mit 4T-0062 selbst eine Fläche geworden.** Die
+               Verbergung sitzt damit an derselben Stelle wie zuvor und trägt
+               den ganzen Bereich mit; läge sie eine Ebene tiefer, bliebe beim
+               Lernen eine leere Kachel stehen. -->
+          <section id="anstehend" class="flaeche" aria-labelledby="anstehend-marke" hidden>
+            <h2 id="anstehend-marke" class="marke-bereich" data-text="bereich.loesungsweg">
+              Lösungsweg
+            </h2>
+            <div class="datei-reihe wiedergabe-steuerung">
+              <button type="button" class="ruhend" id="wg-anfang" data-text="wiedergabe.anfang">
+                Anfang
+              </button>
+              <button
+                type="button"
+                class="ruhend"
+                id="wg-schritt-zurueck"
+                data-text="wiedergabe.schrittZurueck"
+              >
+                Schritt zurück
+              </button>
+              <button
+                type="button"
+                class="ruhend"
+                id="wg-zug-zurueck"
+                data-text="wiedergabe.zugZurueck"
+              >
+                Zug zurück
+              </button>
+              <button type="button" id="wg-abspielen">Abspielen</button>
+              <button type="button" class="ruhend" id="wg-zug-vor" data-text="wiedergabe.zugVor">
+                Zug vor
+              </button>
+              <button
+                type="button"
+                class="ruhend"
+                id="wg-schritt-vor"
+                data-text="wiedergabe.schrittVor"
+              >
+                Schritt vor
+              </button>
+              <button type="button" class="ruhend" id="wg-ende" data-text="wiedergabe.ende">
+                Ende
+              </button>
+            </div>
+            <p class="wiedergabe-stand notation" id="wiedergabe-stand" hidden></p>
+            <p class="erklaerung" data-text="wiedergabe.hinweis">
+              Leertaste spielt ab und hält an, die Pfeiltasten gehen einen Zug, Bild auf und Bild ab
+              springen auf die Schrittgrenzen, Pos 1 und Ende an die Enden.
+            </p>
+            <p class="erklaerung" data-text="wiedergabe.grund">
+              Der Übungswürfel ist während der Wiedergabe gesperrt.
+            </p>
+
+            <h3 class="marke-bereich" data-text="anstehend.marke">Anstehender Zug</h3>
+            <p class="anstehend-notation notation" id="anstehend-notation"></p>
+            <p class="anstehend-klartext" id="anstehend-klartext"></p>
+            <!-- Aus welchen Zügen der Griff entsteht, 4T-0040. Nur sichtbar,
+                 wenn er mehr als einen Zug zusammenfasst. -->
+            <p class="anstehend-griff notation" id="anstehend-griff" hidden></p>
+            <!-- Die Deutung der Marke am Würfel stand bis 4T-0041 hier. Sie
+                 steht seitdem als Band in der Bühne, wo das Zeichen selbst
+                 erscheint, und gilt damit auch beim Lernen. -->
+            <p class="anstehend-schritt" id="anstehend-schritt"></p>
+            <p class="erklaerung" id="anstehend-fortschritt"></p>
+            <!-- Begründung und Weg in die Lektion, 4T-0052. Die Begründung
+                 steht nicht hier und nicht in der Verdrahtung, sondern in der
+                 Lektion, und wird von dort geholt: Zwei Fassungen derselben
+                 liefen früher oder später auseinander, und die schlechtere
+                 stünde in der Lösung, wo sie seltener gelesen wird. -->
+            <p class="anstehend-begruendung" id="anstehend-begruendung"></p>
+            <button type="button" class="ruhend anstehend-lektion" id="anstehend-lektion"></button>
+
+            <h3 class="marke-bereich" data-text="anstehend.liste">Zugfolge</h3>
+            <div class="zugliste notation" id="zugliste"></div>
+            <!-- Die Kennzeichnungen der Liste sind nicht selbsterklärend,
+                 4T-0040. Sie werden neben dem Gegenstand aufgefangen und nicht
+                 in einem Handbuch; der Ort ist seit 4T-0040 derselbe, die Form
+                 hat 4T-0041 geändert.
+
+                 **Vier Zeilen und nicht drei.** Die goldene Hinterlegung war
+                 neben dem Saum das zweite Zeichen, das der Bestand führte, ohne
+                 es zu erklären; die Durchsicht nach AK5 hat es gefunden.
+
+                 **Die Muster sind echte Zuglistenknoten.** Klassen und
+                 Attribute sind dieselben, die `zeigeZugliste` in `main.js`
+                 setzt, und die Züge sind zulässige Notation. Die Notation steht
+                 hier fest im Dokument, weil sie in beiden Sprachen dieselbe
+                 ist; der Name der Folge dagegen trägt seinen Bezeichner. -->
+            <h3 class="marke-bereich" data-text="zeichen.zugfolge">Zeichen der Zugfolge</h3>
+            <div class="zeichenband">
+              <span class="zeichen-muster zeichen-zuege notation" aria-hidden="true">
+                <span class="zugliste-reihe">
+                  <span class="zugliste-folgemarke leise" data-text="folge.topCross"
+                    >Kreuz oben</span
+                  >
+                  <span class="zugliste-zug" data-folge="anfang">F</span>
+                  <span class="zugliste-zug" data-folge="mitte">R</span>
+                  <span class="zugliste-zug" data-folge="mitte">U</span>
+                  <span class="zugliste-zug" data-folge="ende">R'</span>
+                </span>
+              </span>
+              <p class="erklaerung" data-text="zeichen.folge">
+                Eine Linie unter einer Gruppe zeigt eine gelernte Zugfolge. Ihr Name steht davor.
+              </p>
+              <span class="zeichen-muster zeichen-zuege notation" aria-hidden="true">
+                <span class="zugliste-reihe">
+                  <span class="zugliste-zug" data-griff="anfang">R</span>
+                  <span class="zugliste-zug" data-griff="ende">R</span>
+                  <span class="zugliste-griffzug">= R2</span>
+                </span>
+              </span>
+              <p class="erklaerung" data-text="zeichen.griff">
+                Eine Klammer darüber fasst Drehungen derselben Seite zu einem Handgriff zusammen.
+                Dahinter steht, wie weit du drehst.
+              </p>
+              <span class="zeichen-muster zeichen-zuege notation" aria-hidden="true">
+                <span class="zugliste-reihe">
+                  <span class="zugliste-zug" data-griff="anfang">U</span>
+                  <span class="zugliste-zug" data-griff="ende">U'</span>
+                  <span class="zugliste-griffzug">= –</span>
+                </span>
+              </span>
+              <p class="erklaerung" data-text="zeichen.hebtAuf">
+                Ein Strich bedeutet, dass sich die Züge aufheben und du gar nicht drehst.
+              </p>
+              <span class="zeichen-muster zeichen-zuege notation" aria-hidden="true">
+                <span class="zugliste-reihe">
+                  <span class="zugliste-zug">F</span>
+                  <span class="zugliste-zug jetzt">R</span>
+                  <span class="zugliste-zug">U</span>
+                </span>
+              </span>
+              <p class="erklaerung" data-text="zeichen.jetzt">
+                Golden hinterlegt ist die Stelle, an der die Wiedergabe steht.
+              </p>
+            </div>
+          </section>
+
+          <!-- Der Lektionsbereich, 4T-0045. Er tritt an die Stelle des
+               Platzhalters und wird von src/view/lektion.js eingesetzt; die
+               zehn Punkte der Übersicht und die Schaltflächen der Zugfolgen
+               hier zu schreiben hieße, den Lektionskatalog ein zweites Mal zu
+               führen.
+
+               Er bleibt sichtbar, während eine Wiedergabe läuft. Genau das
+               unterscheidet ihn vom Platzhalter: Wer sich eine Zugfolge
+               vorführen lässt, will dabei die Lektion vor Augen haben.
+
+               **Seine Marke steht hier und nicht im Bereich selbst**, 4T-0062.
+               Sie benennt den Bereich und nicht die Lektion; der Titel der
+               Lektion steht darunter im Aufklapper und wechselt mit ihr. -->
+          <section id="lernpfad" class="flaeche" aria-labelledby="lernpfad-marke">
+            <h2 id="lernpfad-marke" class="marke-bereich" data-text="bereich.lernpfad">Lernpfad</h2>
+            <div id="lektion-halter"></div>
+          </section>
+        </div>
+
+        <section id="bedienung" class="flaeche" aria-labelledby="bedienung-marke">
+          <!-- Der Bereich ist ein Aufklapper, 4T-0060. Er misst offen 1231 px
+               und damit ein gutes Drittel der Seitenhöhe, trägt aber sieben
+               Einstellungen, die einmal gewählt und danach nicht mehr angefasst
+               werden.
+
+               **Nativ statt gebaut.** `details` bringt Tastaturbedienung,
+               Zustand und Bekanntgabe an die Vorlesehilfe mit; eine eigene
+               Schublade müsste all das nachbauen. Gemessen am 2026-08-17 hätte
+               sie zudem nur 80 px mehr gewonnen, denn genau so hoch ist der
+               Bereich mit nichts als seiner Marke.
+
+               **Der Zustand wird nicht gespeichert.** Er als Einstellung zu
+               führen hieße, eine achte anzulegen, und 3E-0017 nimmt sich
+               ausdrücklich vor, nichts hinzuzufügen. -->
+          <details id="bedienung-klappe" class="klappe">
+            <summary>
+              <h2 id="bedienung-marke" class="marke-bereich" data-text="bereich.bedienung">
+                Bedienung
+              </h2>
+            </summary>
+
+            <!-- Die Felder tragen nur ihren Namen und die Art des
+                 Bedienelements. Werte und Beschriftungen kommen aus dem Katalog
+                 in src/settings/katalog.js und aus src/i18n; sie hier zu
+                 wiederholen hieße, zwei Wahrheiten zu pflegen. -->
+
+            <div class="feld" data-einstellung="sprache" data-art="auswahl">
+              <label data-text="einstellung.sprache">Sprache</label>
+              <p class="erklaerung" data-text="grund.sprache">
+                Zwei Zielsprachen sind zugesagt. Ohne Umschaltung wäre die zweite wertlos.
+              </p>
+            </div>
+
+            <div class="feld" data-einstellung="palette" data-art="segmente">
+              <label data-text="einstellung.palette">Würfelpalette</label>
+              <div class="farbvorschau" id="farbvorschau" aria-hidden="true">
+                <span style="background: var(--seite-u)"></span>
+                <span style="background: var(--seite-r)"></span>
+                <span style="background: var(--seite-f)"></span>
+                <span style="background: var(--seite-d)"></span>
+                <span style="background: var(--seite-l)"></span>
+                <span style="background: var(--seite-b)"></span>
+              </div>
+              <p class="erklaerung" data-text="grund.palette">
+                Ohne alternative Palette ist der Würfel bei Rot-Grün-Schwäche nicht lösbar, sondern
+                nur zu erraten.
+              </p>
+            </div>
+
+            <div class="feld" data-einstellung="kennzeichnung" data-art="schalter">
+              <label data-text="einstellung.kennzeichnung">Kennzeichnung ohne Farbe</label>
+              <p class="erklaerung" data-text="grund.kennzeichnung">
+                Rückfallebene, wenn auch die alternative Palette nicht reicht.
+              </p>
+            </div>
+
+            <div class="feld" data-einstellung="bewegung" data-art="auswahl">
+              <label data-text="einstellung.bewegung">Bewegung</label>
+              <p class="erklaerung" data-text="grund.bewegung">
+                Bewegtbilder bereiten manchen Anwendern Beschwerden.
+              </p>
+            </div>
+
+            <div class="feld" data-einstellung="ansicht" data-art="segmente">
+              <label data-text="einstellung.ansicht">Ansicht</label>
+              <p class="erklaerung" data-text="grund.ansicht">
+                Rückfallebene für schwache Geräte und für alle, die die flache Übersicht bevorzugen.
+              </p>
+            </div>
+
+            <div class="feld" data-einstellung="schriftgroesse" data-art="auswahl">
+              <label data-text="einstellung.schriftgroesse">Schriftgröße</label>
+              <p class="erklaerung" data-text="grund.schriftgroesse">
+                Der Lernpfad besteht überwiegend aus Text.
+              </p>
+            </div>
+
+            <div class="feld">
+              <button
+                type="button"
+                class="ruhend"
+                id="alles-zuruecksetzen"
+                data-text="einstellung.allesZuruecksetzen"
+              >
+                Alle Einstellungen zurücksetzen
+              </button>
+            </div>
+
+            <h2 class="marke-bereich" data-text="ablage.marke">Sichern</h2>
+            <p class="erklaerung" data-text="ablage.grund">
+              Der Speicher des Browsers hängt am Ort der Datei.
+            </p>
+            <div class="feld datei-reihe">
+              <button type="button" class="ruhend" id="sichern" data-text="ablage.sichern">
+                Als Datei sichern
+              </button>
+              <button type="button" class="ruhend" id="holen" data-text="ablage.holen">
+                Aus Datei holen
+              </button>
+              <!-- Der dritte Weg zum abgelegten Stand, 4T-0084: sichern, holen,
+                   löschen. Er steht hier und nicht neben «Alle Einstellungen
+                   zurücksetzen» eine Zeile höher, denn der Fortschritt ist
+                   keine Einstellung; jene Schaltfläche lässt ihn ausdrücklich
+                   stehen, und eine Prüfung belegt das.
+
+                   **«Fortschritt löschen» und nicht «Alles löschen».** Der
+                   Wortlaut trägt die Abgrenzung, damit der Anwender sie nicht
+                   erst nach dem Klick erfährt. -->
+              <button
+                type="button"
+                class="ruhend"
+                id="fortschritt-loeschen"
+                data-text="ablage.loeschen"
+              >
+                Fortschritt löschen
+              </button>
+              <input type="file" id="datei" accept="application/json,.json" hidden />
+            </div>
+          </details>
+
+          <!-- Der Hinweis steht außerhalb des Aufklappers, 4T-0060. Er meldet
+               beim Start den fehlenden oder ergänzten Browserspeicher, und
+               genau dann ist der Aufklapper geschlossen; innen wäre er
+               ungesehen. Für den zweiten Fall, die Rückmeldung nach «Aus Datei
+               holen», steht er hier unmittelbar unter den beiden
+               Schaltflächen. -->
+          <p class="hinweis" id="hinweis" hidden></p>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="app/main.js"></script>
+  </body>
+</html>
