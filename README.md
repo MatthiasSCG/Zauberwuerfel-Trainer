@@ -3,7 +3,7 @@
 Interaktives Lernprogramm für den Zauberwürfel (3×3×3). Läuft vollständig im
 Browser, ohne Installation, ohne Netzverbindung, ohne Konto.
 
-> **Stand:** Ausbaustufe 1 läuft.
+> **Stand:** Ausbaustufe 2 läuft.
 > **[Programm öffnen](https://matthiasscg.github.io/Zauberwuerfel-Trainer/)**
 
 ## Was das Programm kann
@@ -11,7 +11,9 @@ Browser, ohne Installation, ohne Netzverbindung, ohne Konto.
 **Lernen.** Ein geführter Pfad vom ersten Kontakt mit der Notation bis zum
 selbstständig gelösten Würfel. Gedacht für erwachsene Einsteiger ohne
 Vorkenntnisse, ohne vorausgesetztes Wissen und ohne bloßes Auswendiglernen
-von Zugfolgen.
+von Zugfolgen. Nach dem Anfängerverfahren führt ein zweiter Pfad in vier
+Stufen zum schnelleren Verfahren CFOP, mit Training zum Erkennen und Ausführen
+der Fälle und einer Zeitnahme mit Inspektionszeit.
 
 **Lösen.** Das Programm nimmt den Zustand eines verdrehten Würfels auf und zeigt
 den Weg zurück in den gelösten Zustand. Wahlweise als Lernlösung, bei der jeder
