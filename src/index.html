@@ -557,6 +557,52 @@
             </div>
           </section>
 
+          <!-- Die Zeitnahme, 4T-0147. Der vierte Bereich der Begleitspalte und
+               der einzige, der zu keinem Verfahren gehört.
+
+               **Er steht außerhalb beider Verfahrenshüllen und trägt keine
+               Verfahrensmarke.** Entschieden vom Product Owner am 2026-09-03.
+               Die Zeitnahme gilt für jedes Verfahren; sie unter CFOP zu hängen
+               unterstellte eine Abhängigkeit, die es nicht gibt, und 2A-0020
+               hält ausdrücklich fest, dass das Arbeitspaket von CFOP sachlich
+               unabhängig ist. Dass hier als einzigem Bereich die Gruppenzeile
+               fehlt, sagt genau das; der Bereich «Lösungsweg» darüber steht
+               seit 4T-0062 ebenso ohne eine.
+
+               **Er steht oben und nicht unten, und das ist gemessen.** Der
+               Zuschnitt sah ihn zuletzt vor, weil die Reihenfolge der Spalte
+               der Weg des Anwenders ist: lernen, übergehen, trainieren, messen.
+               Dort stand die Uhr bei 2827 px, und wer sie sehen wollte, musste
+               1785 px rollen; der Würfel endet bei 564 px und war dann fort.
+               **Beim Messen am Bildschirm gehören Würfel und Uhr zur selben
+               Tätigkeit**, und das Höhenbudget aus Abschnitt 7 des
+               Design-Konzepts verlangt für sie einen Blick ohne Rollen. Hier
+               oben steht die Uhr bei 266 px. Entschieden vom Product Owner am
+               2026-09-03.
+
+               **Sein Aufklapper steht beim Start zu**, anders als die drei
+               Bereiche darunter und wie «Bedienung» seit 4T-0060. Das ist der
+               Preis der Stellung und zugleich ihre Bedingung: Aufgeklappt
+               stünde die Messung für einen Einsteiger optisch über dem
+               Lernpfad, und dieses Programm ist als Lernprogramm geschnitten.
+               Zugeklappt kostet der Bereich oben 76 px statt 214, und wer misst,
+               öffnet ihn einmal je Sitzung.
+
+               **Der Halter ist leer und wird von src/view/zeitnahme.js
+               gefüllt.** Die Schaltflächen hier zu schreiben hieße, die Wege
+               ein zweites Mal zu führen; welche es gibt, weiß
+               src/timing/stopwatch.js. -->
+          <section id="zeitnahme" class="flaeche" aria-labelledby="zeitnahme-marke">
+            <details id="zeitnahme-klappe" class="klappe">
+              <summary>
+                <h2 id="zeitnahme-marke" class="marke-bereich" data-text="bereich.zeitnahme">
+                  Zeitnahme
+                </h2>
+              </summary>
+              <div id="zeitnahme-halter"></div>
+            </details>
+          </section>
+
           <!-- Der Lektionsbereich, 4T-0045. Er tritt an die Stelle des
                Platzhalters und wird von src/view/lektion.js eingesetzt; die
                zehn Punkte der Übersicht und die Schaltflächen der Zugfolgen
@@ -569,11 +615,129 @@
 
                **Seine Marke steht hier und nicht im Bereich selbst**, 4T-0062.
                Sie benennt den Bereich und nicht die Lektion; der Titel der
-               Lektion steht darunter im Aufklapper und wechselt mit ihr. -->
-          <section id="lernpfad" class="flaeche" aria-labelledby="lernpfad-marke">
-            <h2 id="lernpfad-marke" class="marke-bereich" data-text="bereich.lernpfad">Lernpfad</h2>
-            <div id="lektion-halter"></div>
-          </section>
+               Lektion steht darunter im Aufklapper und wechselt mit ihr.
+
+               **Der Bereich ist seit 4T-0130 selbst ein Aufklapper**, und damit
+               stehen zwei ineinander. Der äußere gehört dem Anwender, der
+               innere dem Programm; das Stilblatt hält die beiden Bedienungen
+               seit 4T-0061 auseinander, und der Grund steht dort. Wäre es einer
+               für beide, klappte der Bereich beim nächsten Wechsel in das Lösen
+               wieder auf, den der Anwender gerade weggeräumt hat.
+
+               **Die Verfahrensmarke bleibt draußen, die Bereichsmarke geht
+               hinein.** Sie benennt, was im Aufklapper steckt, und `summary`
+               nimmt genau ein Überschriftselement auf; ihre Kennung wandert
+               mit, damit `aria-labelledby` an der `section` sein Ziel behält.
+
+               **Offen beim Start**, anders als der Bereich «Bedienung». Die
+               Einstellungen werden einmal gewählt, dieser Bereich ist der
+               Inhalt; zwei geschlossene Marken beim ersten Aufruf zeigten kein
+               Programm.
+
+               **Seit 4T-0137 steckt er in der Hülle seines Verfahrens**, und
+               die Verfahrensmarke steht dort statt in der Fläche. Der Grund
+               steht bei der zweiten Hülle darunter; hier ist er kleiner, denn
+               das Anfängerverfahren hat nur diesen einen Bereich. Er trägt die
+               Bauform trotzdem, weil zwei Verfahren, die gleich aussehen,
+               nicht verschieden gebaut sein sollen. -->
+          <div class="verfahren" role="group" aria-labelledby="anfaengerverfahren-marke">
+            <p
+              class="marke-verfahren"
+              id="anfaengerverfahren-marke"
+              data-text="bereich.anfaengerverfahren"
+            >
+              Anfängerverfahren
+            </p>
+            <section id="lernpfad" class="flaeche" aria-labelledby="lernpfad-marke">
+              <details id="lernpfad-klappe" class="klappe" open>
+                <summary>
+                  <h2 id="lernpfad-marke" class="marke-bereich" data-text="bereich.lernpfad">
+                    Lernpfad
+                  </h2>
+                </summary>
+                <div id="lektion-halter"></div>
+              </details>
+            </section>
+          </div>
+
+          <!-- Der Übergang zum Verfahren CFOP, 4T-0121. Ein zweiter Bereich
+               neben dem Lernpfad und nicht an seiner Stelle; er wird von
+               src/view/stufe.js eingesetzt.
+
+               **Er steht unter dem Lernpfad, weil er ihn voraussetzt.** Die
+               erste Stufe wird frei, sobald die letzte Lektion abgeschlossen
+               oder übersprungen ist; die Reihenfolge im Dokument ist die des
+               Lernwegs.
+
+               **Er ist von Anfang an sichtbar, mit vier gesperrten Stufen.**
+               Entschieden am 2026-08-27 gegen einen Bereich, der erst mit der
+               Freigabe erscheint: Der Stufenbereich trägt einen ausgearbeiteten
+               gesperrten Zustand, und bei jenem Weg bekäme ihn niemand je zu
+               sehen. Die Fläche regelt sein Aufklapper.
+
+               **Ein zweiter Bereich und keine umschaltende Anzeige**, ebenfalls
+               gemessen: Alle zehn Funktionen, die in main.js die angezeigte
+               Lektion anfassen, brauchen Lektionswissen und müssten sonst
+               verzweigen.
+
+               **Auch dieser Bereich ist seit 4T-0130 ein Aufklapper**, mit
+               derselben Bauform und derselben Begründung wie der Lernpfad
+               darüber. Das ist der eigentliche Anlass des Epics: Erst seit hier
+               zwei Verfahren untereinander stehen, hat der Anwender überhaupt
+               eines, das er gerade nicht braucht.
+
+               **Die Verfahrensmarke steht seit 4T-0137 in der Hülle und nicht
+               mehr in dieser Fläche.** CFOP hat seither zwei Bereiche, und eine
+               Marke, die in einem von beiden steckte, benennte nur ihn. Die
+               Hülle ist die Klammer des Verfahrens und trägt über `role` und
+               `aria-labelledby` auch für die Vorlesehilfe seinen Namen; vorher
+               war die Marke ein Absatz, der nichts überschrieb. -->
+          <div class="verfahren" role="group" aria-labelledby="cfop-marke">
+            <p class="marke-verfahren" id="cfop-marke" data-text="bereich.cfop">CFOP</p>
+            <section id="uebergang" class="flaeche" aria-labelledby="uebergang-marke">
+              <details id="uebergang-klappe" class="klappe" open>
+                <summary>
+                  <h2 id="uebergang-marke" class="marke-bereich" data-text="bereich.uebergang">
+                    Übergang
+                  </h2>
+                </summary>
+                <div id="stufe-halter"></div>
+              </details>
+            </section>
+
+            <!-- Das Training von Erkennung und Ausführung, 4T-0137. Ein dritter
+                 Bereich der Begleitspalte und der zweite des Verfahrens CFOP.
+
+                 **Er steht unter dem Übergang, weil er ihn voraussetzt**, wie
+                 der Übergang den Lernpfad. Geübt wird, was eine freigegebene
+                 Stufe hinterlegt hat; die Reihenfolge im Dokument ist die des
+                 Lernwegs.
+
+                 **Er entsteht vor beiden Übungsformen**, entschieden am
+                 2026-08-29: Erkennung und Ausführung brauchen dieselbe Fläche,
+                 und entstünde sie in der ersten, müsste die zweite sie
+                 aufbrechen.
+
+                 **Er heißt Training und nicht Übung.** Das Wort «Übung» ist im
+                 Lernpfad und im Übergang vergeben, wo «Übung beginnen» eine
+                 Fallage auflegt und die Deckung einer Stufe füllt. Das hier ist
+                 das Karteikarten-Training mit getrennten Übungsformen und
+                 gewichteter Ziehung; ein Wort für beides träfe keines von
+                 beiden.
+
+                 **Der Halter ist leer, bis 4T-0138 die Wahl von Stufe und
+                 Übungsform einsetzt.** Dieser Task baut das Gefäß. -->
+            <section id="training" class="flaeche" aria-labelledby="training-marke">
+              <details id="training-klappe" class="klappe" open>
+                <summary>
+                  <h2 id="training-marke" class="marke-bereich" data-text="bereich.training">
+                    Training
+                  </h2>
+                </summary>
+                <div id="training-halter"></div>
+              </details>
+            </section>
+          </div>
         </div>
 
         <section id="bedienung" class="flaeche" aria-labelledby="bedienung-marke">
@@ -651,6 +815,35 @@
               <label data-text="einstellung.schriftgroesse">Schriftgröße</label>
               <p class="erklaerung" data-text="grund.schriftgroesse">
                 Der Lernpfad besteht überwiegend aus Text.
+              </p>
+            </div>
+
+            <!-- Eintrag 7 des Einstellungs-Katalogs, 4T-0148. **Als
+                 Segmentreihe und nicht als Auswahlliste**, entschieden vom
+                 Product Owner am 2026-09-03: Drei kurze Werte stehen
+                 nebeneinander und sind mit einem Griff erreichbar, wie bei
+                 Würfelpalette und Ansicht. Gemessen am selben Tag im schmalen
+                 Fenster von 375 px: «Aus | 15 s | 30 s» belegt 275 px von 277
+                 verfügbaren, ausgeschrieben wären es 299 px und damit eine
+                 zweite Zeile. -->
+            <div class="feld" data-einstellung="inspektion" data-art="segmente">
+              <label data-text="einstellung.inspektion">Inspektionszeit</label>
+              <p class="erklaerung" data-text="grund.inspektion">
+                Beim Üben stört eine Wartezeit, beim Nachstellen des Wettkampfablaufs gehört sie
+                dazu.
+              </p>
+            </div>
+
+            <!-- Eintrag 8 und damit der letzte des Katalogs, 4T-0149. **Als
+                 Kippschalter wie die Kennzeichnung**: Zwei Werte, die «an» und
+                 «aus» heißen, sind ein Schalter. Er ist der einzige Eintrag mit
+                 der Vorgabe «aus»; ein Programm, das ungefragt Geräusche macht,
+                 wird stummgeschaltet und nicht bedient. -->
+            <div class="feld" data-einstellung="ton" data-art="schalter">
+              <label data-text="einstellung.ton">Ton</label>
+              <p class="erklaerung" data-text="grund.ton">
+                Zwei Signale bei der Zeitnahme: wenn die Uhr zu laufen beginnt und wenn der Würfel
+                gelöst ist.
               </p>
             </div>
 

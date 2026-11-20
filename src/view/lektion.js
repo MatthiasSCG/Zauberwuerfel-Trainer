@@ -23,9 +23,10 @@
 //
 // `bereichsstand` ist eine reine Funktion und wird vollständig durchgerechnet,
 // `erzeugeLektionsbereich` baut daraus Knoten. Die Trennung ist kein Selbstzweck:
-// Die Frage, welche Lektion als gesperrt zu zeigen ist und welcher Nachbar sich
-// anwählen lässt, ist genau die Art Rechnung, deren Fehler am Bild nicht
-// auffällt, weil ein zu viel freigegebener Knopf aussieht wie ein richtiger.
+// Die Frage, welche Lektion als gesperrt zu zeigen ist und wo geübt, übersprungen
+// oder eingestiegen werden kann, ist genau die Art Rechnung, deren Fehler am Bild
+// nicht auffällt, weil ein zu viel freigegebener Knopf aussieht wie ein
+// richtiger. Anwählen lässt sich seit 4T-0207 jede Lektion.
 
 /**
  * Die vier Zustände, in denen eine Lektion in der Übersicht steht.
@@ -96,10 +97,10 @@ function zustandVon(eintrag) {
 function nachbar(uebersicht, index) {
   const eintrag = uebersicht[index];
   if (!eintrag) return null;
-  // Die Kennung kommt auch dann mit, wenn die Lektion gesperrt ist. Ein Knopf,
-  // der die nächste Lektion benennt und untätig ist, sagt mehr als ein Knopf,
-  // der verschwindet: Der Anwender sieht, dass es weitergeht und dass er noch
-  // nicht so weit ist.
+  // Die Kennung kommt auch dann mit, wenn die Lektion gesperrt ist, und seit
+  // 4T-0207 führt der Knopf auch dorthin: Gelesen werden darf jede Lektion.
+  // `erreichbar` sagt weiterhin, ob sie frei ist; die Anzeige braucht es nicht
+  // mehr für die Navigation, wohl aber jede Prüfung, die die Freigabe liest.
   return { kennung: eintrag.key, nummer: eintrag.number, erreichbar: eintrag.unlocked };
 }
 
@@ -180,15 +181,42 @@ export function bereichsstand({
     // gesperrte auch nicht. Der Pfad weist beides ab; der Knopf verschwindet
     // hier, damit die Abweisung gar nicht erst nötig wird.
     ueberspringbar: eintrag.unlocked && !eintrag.completed,
+    // **An einer gesperrten Lektion steht stattdessen der Einstieg**, 4T-0207.
+    // Die beiden Knöpfe schließen einander aus: Überspringen gilt der freien
+    // Lektion und rückt einen Schritt weiter, Einsteigen gilt der gesperrten
+    // und gibt alles bis zu ihr frei. Bis dahin verschwand an einer gesperrten
+    // Stelle jede Bedienung, und der Anwender sah keinen Weg vorwärts.
+    einsteigbar: !eintrag.unlocked,
   };
+}
+
+/**
+ * Der Satz der Standzeile zu einem Stand aus `bereichsstand`.
+ *
+ * **Eine übersprungene Lektion nennt ihren bisherigen Stand mit**, seit
+ * 4T-0212, gleich gebaut wie im Übergang. Gefunden wurde der Mangel dort, im
+ * Abnahmelauf vom 2026-11-20 als B4; hier tritt er nach dem freien Einstieg
+ * genauso auf, sobald jemand in einer übersprungenen Lektion doch übt.
+ *
+ * Eigens herausgezogen, damit der Satz ohne Dokument prüfbar ist.
+ */
+export function standsatz(stand, text) {
+  if (stand.zustand === ZUSTAND.ABGESCHLOSSEN) return text('pfad.abgeschlossen');
+  if (stand.zustand === ZUSTAND.GESPERRT) return text('pfad.gesperrt');
+  const fortschritt = text('pfad.anwendungen', {
+    getan: stand.uebung.getan,
+    verlangt: stand.uebung.verlangt,
+  });
+  if (stand.zustand !== ZUSTAND.UEBERSPRUNGEN) return fortschritt;
+  return `${text('pfad.uebersprungen')} ${text('pfad.bisher', { stand: fortschritt })}`;
 }
 
 /**
  * Baut den Lektionsbereich und liefert seine Bedienung.
  *
- * `handlungen` trägt acht Rückrufe: `waehle(kennung)`, `fuehreVor(folge)`,
+ * `handlungen` trägt neun Rückrufe: `waehle(kennung)`, `fuehreVor(folge)`,
  * `fuehreZugVor(notation)`, `beginneUebung()`, `melde()`, `ueberspringe()`,
- * `hilf()` und `kehreZurueck()`. Keiner von ihnen liefert etwas zurück; was
+ * `hilf()`, `kehreZurueck()` und seit 4T-0207 `steigeEin()`. Keiner von ihnen liefert etwas zurück; was
  * daraus folgt, kommt beim nächsten `zeige` wieder herein.
  */
 export function erzeugeLektionsbereich(dokument, handlungen) {
@@ -273,6 +301,12 @@ export function erzeugeLektionsbereich(dokument, handlungen) {
   // und am Ende bleiben soll.
   const knopfHilfe = knopf('ruhend', uebungKnoten, () => handlungen.hilf());
   const knopfUeberspringen = knopf('ruhend', uebungKnoten, () => handlungen.ueberspringe());
+  // Der Einstieg, 4T-0207. Er steht an der Stelle der Übung und nicht in der
+  // Navigation, denn er macht die Übung erst möglich. **Er ist zurückhaltend
+  // dargestellt wie das Überspringen und nicht hervorgehoben**: Er ist eine
+  // Abkürzung für den, der sie sucht, und soll den Einsteiger, der der Reihe
+  // nach geht, nicht vom Weg locken. Abschnitt 7 des Didaktik-Konzepts.
+  const knopfEinsteigen = knopf('ruhend', uebungKnoten, () => handlungen.steigeEin());
 
   // Die Auskunft steht unmittelbar unter ihrer Schaltfläche und nicht bei der
   // Rückmeldung der Übung. Beide erscheinen und verschwinden zu verschiedenen
@@ -295,9 +329,11 @@ export function erzeugeLektionsbereich(dokument, handlungen) {
   /** Der zuletzt gezeigte Stand, für die beiden Nachbarschaltflächen. */
   let letzter = null;
 
+  // **Auch eine gesperrte Nachbarin wird gewählt**, seit 4T-0207: Die Sperre
+  // regelt das Üben und nicht das Lesen, Abschnitt 7 des Didaktik-Konzepts.
   function waehleNachbar(richtung) {
     const ziel = letzter?.[richtung];
-    if (ziel && ziel.erreichbar) handlungen.waehle(ziel.kennung);
+    if (ziel) handlungen.waehle(ziel.kennung);
   }
 
   /** Legt die zehn Knöpfe der Übersicht an, sobald der Pfad zum ersten Mal steht. */
@@ -454,8 +490,11 @@ export function erzeugeLektionsbereich(dokument, handlungen) {
 
       for (const eintrag of stand.uebersicht) {
         const element = uebersichtKnoepfe.get(eintrag.kennung);
+        // **Kein Punkt ist gesperrt**, seit 4T-0207. Den Zustand trägt
+        // `data-zustand` und der vorgelesene Name; eine untätige Schaltfläche
+        // verwehrte dazu noch das Lesen, und genau das hat der Abnahmelauf vom
+        // 2026-09-08 als fehlenden Weg gefunden.
         element.dataset.zustand = eintrag.zustand;
-        element.disabled = !eintrag.erreichbar;
         element.setAttribute('aria-current', String(eintrag.laufend));
         // Der Titel gehört an den Knopf und nicht in eine Legende daneben:
         // Zehn Ziffern ohne Namen sind eine Zahlenreihe und kein Pfad.
@@ -467,8 +506,8 @@ export function erzeugeLektionsbereich(dokument, handlungen) {
 
       knopfVorige.textContent = text('pfad.vorige');
       knopfNaechste.textContent = text('pfad.naechste');
-      knopfVorige.disabled = !stand.vorige?.erreichbar;
-      knopfNaechste.disabled = !stand.naechste?.erreichbar;
+      knopfVorige.disabled = stand.vorige === null;
+      knopfNaechste.disabled = stand.naechste === null;
       knopfZurueck.hidden = !rueckweg;
       knopfZurueck.textContent = text('pfad.zurLoesung');
 
@@ -479,6 +518,8 @@ export function erzeugeLektionsbereich(dokument, handlungen) {
       knopfMelden.textContent = text('pfad.verstanden');
       knopfUeberspringen.hidden = !stand.ueberspringbar;
       knopfUeberspringen.textContent = text('pfad.ueberspringen');
+      knopfEinsteigen.hidden = !stand.einsteigbar;
+      knopfEinsteigen.textContent = text('pfad.einsteigen');
 
       // Während gerechnet wird, bleibt die Schaltfläche stehen und wird nur
       // untätig. Ein Knopf, der verschwindet und wiederkommt, lässt das Layout
@@ -492,17 +533,7 @@ export function erzeugeLektionsbereich(dokument, handlungen) {
         hilfeKnoten.textContent = text(hilfe.bezeichner, hilfe.werte ?? null);
       }
 
-      standKnoten.textContent =
-        stand.zustand === ZUSTAND.ABGESCHLOSSEN
-          ? text('pfad.abgeschlossen')
-          : stand.zustand === ZUSTAND.UEBERSPRUNGEN
-            ? text('pfad.uebersprungen')
-            : stand.zustand === ZUSTAND.GESPERRT
-              ? text('pfad.gesperrt')
-              : text('pfad.anwendungen', {
-                  getan: stand.uebung.getan,
-                  verlangt: stand.uebung.verlangt,
-                });
+      standKnoten.textContent = standsatz(stand, text);
 
       rueckmeldungKnoten.hidden = rueckmeldung === null;
       if (rueckmeldung !== null) {

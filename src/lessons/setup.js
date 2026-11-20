@@ -43,6 +43,7 @@
 import { CORNERS, EDGES, applyMoves, isSolved, solvedCube } from '../core/cube.js';
 import { scramble } from '../core/scramble.js';
 import { PRACTICE, lessonFor } from './catalog.js';
+import { gleicheParitaetAus, parity, randomInt, setzeOrientierung, verteile } from './scatter.js';
 
 // Stellen, wie in `core/goals.js` aus den Namen gelesen und nicht als Zahl
 // geschrieben. Eine Änderung der Reihenfolge in `cube.js` bedeutete hier sonst
@@ -151,21 +152,6 @@ const CASE_KINDS = new Map([
 export const TOP_PATTERNS = ['point', 'line', 'angle'];
 
 /** Ganze Zahl von 0 bis n-1. Geklemmt, damit auch eine entartete Quelle trägt. */
-function randomInt(random, n) {
-  const wert = Math.floor(random() * n);
-  return wert < 0 || Number.isNaN(wert) ? 0 : wert >= n ? n - 1 : wert;
-}
-
-/** Eine Kopie der Liste in zufälliger Reihenfolge, in fester Zahl von Ziehungen. */
-function shuffled(random, liste) {
-  const werte = [...liste];
-  for (let i = werte.length - 1; i > 0; i--) {
-    const j = randomInt(random, i + 1);
-    [werte[i], werte[j]] = [werte[j], werte[i]];
-  }
-  return werte;
-}
-
 /** Alle Anordnungen einer Liste, für die Aufzählung der endlichen Fallmengen. */
 function permutations(werte) {
   if (werte.length <= 1) return [[...werte]];
@@ -175,17 +161,6 @@ function permutations(werte) {
     for (const teil of permutations(rest)) liste.push([werte[i], ...teil]);
   }
   return liste;
-}
-
-/** Gerade Zahl von Vertauschungen? Entscheidet, welche Anordnungen möglich sind. */
-function parity(anordnung) {
-  let count = 0;
-  for (let i = 0; i < anordnung.length; i++) {
-    for (let j = i + 1; j < anordnung.length; j++) {
-      if (anordnung[i] > anordnung[j]) count++;
-    }
-  }
-  return count % 2;
 }
 
 /** Alle nichtleeren Teilmengen, als Listen in der Reihenfolge der Vorlage. */
@@ -402,82 +377,6 @@ function patternSlots(slots, muster, random) {
   const start = randomInt(random, slots.length);
   const abstand = muster === 'line' ? 2 : 1;
   return [slots[start], slots[(start + abstand) % slots.length]];
-}
-
-/**
- * Verteilt die Steine eines Pools neu und sorgt dafür, dass keiner der Plätze
- * aus `verlangtOffen` seinen eigenen Stein behält.
- *
- * Ein Tausch macht **beide** beteiligten Plätze zugleich fremd besetzt, denn an
- * jedem liegt danach der Stein des anderen. Deshalb genügt ein einziger
- * Durchgang über die Plätze, und eine Schleife, die auf den Zufall wartet,
- * entsteht gar nicht erst.
- */
-function verteile(permutation, pool, verlangtOffen, random) {
-  const steine = shuffled(random, pool);
-  pool.forEach((stelle, index) => {
-    permutation[stelle] = steine[index];
-  });
-  if (verlangtOffen.length === 0) return;
-  if (pool.length < 2) {
-    throw new RangeError('Ein Platz kann nicht fremd besetzt sein, wenn er allein steht');
-  }
-  for (const stelle of verlangtOffen) {
-    if (permutation[stelle] !== stelle) continue;
-    const partner =
-      pool.find((andere) => andere !== stelle && permutation[andere] !== andere) ??
-      pool.find((andere) => andere !== stelle);
-    [permutation[stelle], permutation[partner]] = [permutation[partner], permutation[stelle]];
-  }
-}
-
-/**
- * Stellt die gleiche Vertauschungs-Parität von Ecken und Kanten her.
- *
- * Zwei vertauschte Ecken allein sind an einem echten Würfel nicht herstellbar,
- * ohne dass auch zwei Kanten vertauscht sind. Der Ausgleich tauscht deshalb
- * zwei Plätze, die weder die Vorbedingung noch der Fall festlegt und die auch
- * nicht offen bleiben müssen; nur dort ist er folgenlos.
- *
- * **Für die Lektionen 7 und 8 gibt es keinen solchen Platz, und das ist keine
- * Lücke.** Dort stehen alle zwölf Kanten, ihre Anordnung ist also gerade, und
- * die Fallmenge führt aus demselben Grund nur gerade Anordnungen der Ecken. Der
- * Ausgleich ist damit schon erbracht; wäre er es nicht, wäre die Fallmenge
- * falsch, und der Wurf zeigt genau dorthin.
- */
-function gleicheParitaetAus(state, eckenTausch, kantenTausch) {
-  if (parity(state.cp) === parity(state.ep)) return;
-  const nutzeEcken = eckenTausch.length >= 2;
-  const paar = nutzeEcken ? eckenTausch : kantenTausch;
-  const permutation = nutzeEcken ? state.cp : state.ep;
-  if (paar.length < 2) {
-    throw new RangeError('Die Fallmenge liefert eine Anordnung, die kein Würfel tragen kann');
-  }
-  [permutation[paar[0]], permutation[paar[1]]] = [permutation[paar[1]], permutation[paar[0]]];
-}
-
-/**
- * Vergibt die freien Orientierungen und bringt ihre Summe auf ein Vielfaches
- * des Modulus, drei bei den Ecken und zwei bei den Kanten.
- *
- * Der Ausgleich sitzt auf dem letzten freien Platz. Gibt es keinen, muss die
- * Summe bereits stimmen: bei Lektion 5, deren drei Bilder alle eine gerade Zahl
- * gekippter Kanten tragen, und bei Lektion 8, deren Fallmenge nichts anderes
- * zulässt. Stimmt sie dann nicht, ist die Fallmenge falsch, und der Wurf sagt
- * das, statt eine unlösbare Lage auszuliefern.
- */
-function setzeOrientierung(werte, frei, modulus, random) {
-  const ausgleich = frei.length > 0 ? frei[frei.length - 1] : null;
-  for (let i = 0; i < frei.length - 1; i++) werte[frei[i]] = randomInt(random, modulus);
-  if (ausgleich !== null) werte[ausgleich] = 0;
-  const summe = werte.reduce((a, b) => a + b, 0);
-  if (ausgleich === null) {
-    if (summe % modulus !== 0) {
-      throw new RangeError(`Die Orientierungen lassen sich nicht auf ${modulus} ausgleichen`);
-    }
-    return;
-  }
-  werte[ausgleich] = (modulus - (summe % modulus)) % modulus;
 }
 
 /**

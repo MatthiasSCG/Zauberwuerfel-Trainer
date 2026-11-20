@@ -12,6 +12,14 @@
 //
 // Achsen: x nach rechts, y nach oben, z nach vorn. Jede Koordinate läuft von
 // -1 bis 1, der Mittelpunkt (0,0,0) ist kein Stein.
+//
+// **Was ein Zug bewegt, sagt der Kern und nicht diese Datei.** Seit 4T-0099
+// kommen Achse und Schichten aus `moveDescription`; hier wird daraus nur noch
+// eine Richtung, ein Winkel und eine Auswahl von Steinen. Der Grund ist
+// derselbe wie überall in dieser Datei: Eine zweite Rechnung über dieselbe
+// Frage läuft der ersten davon, und zwar stillschweigend.
+
+import { moveDescription, isFaceMove } from '../core/moves.js';
 
 /** Die sechs Seiten in der Zählreihenfolge des Kerns. */
 export const SEITEN = ['U', 'R', 'F', 'D', 'L', 'B'];
@@ -219,21 +227,67 @@ export function inSchicht(stellung_, seite) {
 }
 
 /**
- * Die Drehung, die ein Zug an der Schicht vornimmt.
+ * Die drei Achsen des Zugraums als Richtung, in der Reihenfolge des Kerns.
  *
- * Ein Zug dreht im Uhrzeigersinn, **von außen auf die Seite geblickt**. Nach
- * der Rechte-Hand-Regel ist das eine Drehung um die nach außen zeigende
- * Richtung mit negativem Winkel. Das ist die Stelle, an der ein Vorzeichen
+ * `moveDescription` zählt die Achsen als 0, 1 und 2. Welche Richtung dazu
+ * gehört, sagt die positive Fläche der Achse: R für die erste, U für die
+ * zweite, F für die dritte. Abgeleitet aus `NORMALEN` und nicht als Zahlen
+ * hingeschrieben, damit hier keine zweite Tabelle neben jener steht.
+ */
+const ACHSEN = [NORMALEN.R, NORMALEN.U, NORMALEN.F];
+
+/** Das Skalarprodukt zweier Richtungen. */
+const punktprodukt = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+/**
+ * Bewegt der Zug den Stein an dieser Stellung?
+ *
+ * **Die allgemeine Fassung von `inSchicht`.** Jene fragt nach einer Seite und
+ * trifft damit genau eine Außenschicht; das reicht für die achtzehn
+ * Flächendrehungen und für kein weiteres Zeichen der Notation. Diese hier
+ * fragt nach einem Zug und liest aus seiner Beschreibung, welche Schichten
+ * seiner Achse mitgehen.
+ *
+ * **`inSchicht` bleibt trotzdem.** Das flache Netz und die Lektionen fragen
+ * nach einer Seite und nicht nach einem Zug; ihnen eine Zugnummer
+ * abzuverlangen wäre ein Umweg über eine Angabe, die sie gar nicht haben.
+ */
+export function imZug(stellung_, zug) {
+  const { achse, schichten } = drehungFuerZug(zug);
+  return schichten.includes(punktprodukt(stellung_, achse));
+}
+
+/**
+ * Die Drehung, die ein Zug an seinen Schichten vornimmt.
+ *
+ * Ein Zug dreht im Uhrzeigersinn, **von außen auf die positive Fläche seiner
+ * Achse geblickt**. Nach der Rechte-Hand-Regel ist das eine Drehung um die
+ * Achsrichtung mit negativem Winkel. Das ist die Stelle, an der ein Vorzeichen
  * die halbe Darstellung falsch macht, und deshalb wird sie gegen den Kern
  * geprüft und nicht aus dem Kopf gesetzt.
  *
- * Der Zug-Index zählt wie im Kern: Seitenindex mal drei, plus Anzahl der
- * Vierteldrehungen minus eins.
+ * **Achse und Schichten kommen aus dem Kern**, über `moveDescription`. Die
+ * Darstellung leitet aus einem Zug-Index nicht selbst her, welche Schichten er
+ * bewegt; das wäre eine zweite Wahrheit über dieselbe Frage.
+ *
+ * **`seite` gibt es nur noch bei den achtzehn Flächendrehungen**, sonst
+ * `null`. Ein Zug, der zwei Schichten oder den ganzen Würfel dreht, hat keine
+ * eine Seite, und ein Aufrufer, der eine erwartet, soll das an `null` merken
+ * und nicht an einem stillschweigend falschen Buchstaben.
+ *
+ * `grad` ist negativ für eine Drehung in positiver Achsrichtung. Ein Zug, der
+ * der negativen Fläche folgt, hat ein negatives `quarters` und damit ein
+ * positives `grad`; das ist dieselbe Drehung, nur um die Gegenachse
+ * beschrieben.
  */
 export function drehungFuerZug(zug) {
-  const seite = SEITEN[Math.floor(zug / 3)];
-  const vierteldrehungen = (zug % 3) + 1;
-  return { seite, achse: NORMALEN[seite], grad: -90 * vierteldrehungen };
+  const { axis, layers, quarters } = moveDescription(zug);
+  return {
+    seite: isFaceMove(zug) ? SEITEN[Math.floor(zug / 3)] : null,
+    achse: ACHSEN[axis],
+    schichten: layers,
+    grad: -90 * quarters,
+  };
 }
 
 /**
@@ -295,7 +349,7 @@ export const KANTEN = ['oben', 'rechts', 'unten', 'links'];
  * durch Leerzeichen getrennt, oder leer.
  */
 export function hervorhebung(zug) {
-  const { seite, achse, grad } = drehungFuerZug(zug);
+  const { achse, grad } = drehungFuerZug(zug);
   // Maßgeblich ist der kurze Weg und nicht die Zahl der Vierteldrehungen. Eine
   // Dreivierteldrehung sieht man als Vierteldrehung in die Gegenrichtung, und
   // genau die läuft auch in der Bewegung ab, siehe `cssDrehung`.
@@ -312,13 +366,17 @@ export function hervorhebung(zug) {
   const punkt = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
   const betroffene = new Set(
-    STEINE.filter((stein) => inSchicht(stein.stellung, seite)).map((stein) =>
-      stein.stellung.join(','),
-    ),
+    STEINE.filter((stein) => imZug(stein.stellung, zug)).map((stein) => stein.stellung.join(',')),
   );
 
   return FELDER.filter((feld) => betroffene.has(feld.stellung.join(','))).map((feld) => {
-    if (feld.seite === seite) return { nummer: feld.nummer, kanten: '' };
+    // Eine Fläche, deren Normale auf der Drehachse liegt, dreht sich um sich
+    // selbst; ihre Bewegung ist dort ein Wirbel und zeigte je Fläche in eine
+    // andere Richtung. Bei einer Flächendrehung ist das genau die drehende
+    // Seite, bei einer Ganzdrehung sind es beide Flächen der Achse, bei einer
+    // Mittelschicht keine. **Aus der Achse gerechnet und nicht an der Seite
+    // festgemacht**, denn eine Seite hat nicht jeder Zug.
+    if (Math.abs(punkt(feld.normale, achse)) === 1) return { nummer: feld.nummer, kanten: '' };
     // Die Bewegungsrichtung am Ort der Fläche. Das Kreuzprodukt liefert die
     // Tangente, nicht die Sehne: Wohin ein Feld am Ende landet, ist eine
     // andere Frage als die, in welche Richtung es losläuft, und gefragt ist

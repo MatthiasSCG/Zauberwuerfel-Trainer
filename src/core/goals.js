@@ -116,3 +116,33 @@ export const GOALS = [
   { key: 'topCornersPlaced', holds: topCornersPlaced },
   { key: 'cubeSolved', holds: cubeSolved },
 ];
+
+// ---------------------------------------------------------------------------
+// Ein Ziel außerhalb der Kette
+// ---------------------------------------------------------------------------
+
+/**
+ * Die letzte Schicht ist orientiert, aber noch nicht gesetzt.
+ *
+ * Das Ziel der ersten Stufe des Verfahrens CFOP: Oben zeigt eine einzige Farbe,
+ * die Steine stehen aber noch nicht an ihrem Platz. Es schließt das vierte Ziel
+ * ein und wird vom siebten eingeschlossen, ohne zwischen ihnen zu liegen.
+ *
+ * **Es steht mit Absicht nicht in `GOALS`, und das ist gemessen.** Die Liste ist
+ * keine Sammlung von Zustandsaussagen, sondern die Gliederung des
+ * Anfängerverfahrens: `solver/beginner.js` vergleicht ihre Länge mit der Zahl
+ * seiner Schritte und wirft bei Ungleichheit, und er greift über den Index auf
+ * ihre Einträge. Ein achter Eintrag am Ende ließ am 2026-08-26 sieben
+ * Prüfdateien schon beim Laden abreißen, 187 Aussagen liefen gar nicht mehr; an
+ * fünfter Stelle eingeschoben fielen 57 Prüfungen. Einzelheiten in 4T-0116.
+ *
+ * **Es ist die erste Verzweigung der Kette und keine Fortsetzung.** Zwischen dem
+ * vierten und dem fünften Ziel ist kein Platz für es: Eine Lage kann dieses Ziel
+ * halten, ohne dass die Kanten oben an ihrem Platz liegen, und eine andere kann
+ * die Kanten oben an ihrem Platz haben und dieses Ziel verfehlen. Genau daran
+ * hängt die Trennung von Orientieren und Setzen, die den Übergang zu den
+ * schnellen Methoden trägt.
+ */
+export function topLayerOriented(state) {
+  return topCrossVisible(state) && UPPER_CORNERS.every((index) => state.co[index] === 0);
+}

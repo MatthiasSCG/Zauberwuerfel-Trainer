@@ -130,6 +130,38 @@ export function applyMoves(cube, moves) {
   return next;
 }
 
+/**
+ * Verkettet zwei Lagen: erst `first`, dann `second`.
+ *
+ * Ein Zug ist selbst eine Lage, nämlich die, die er auf dem gelösten Würfel
+ * herstellt. Deshalb ist diese Rechnung dieselbe wie in `applyFaceTurn`, nur
+ * mit einer beliebigen zweiten Lage statt einer der sechs Zugtabellen; dass
+ * beide übereinstimmen, rechnet die Prüfstrecke für alle achtzehn
+ * Grunddrehungen nach.
+ *
+ * **Gebraucht wird sie dort, wo ein Zug nicht nur hinten angehängt, sondern
+ * auch vorn angesetzt werden muss.** `applyMove` kann allein das erste. Die
+ * Fallerkennung von CFOP braucht beides: Ein Fall ist die Menge der Lagen, die
+ * dieselbe Zugfolge löst, wenn der Anwender die obere Ebene davor **und
+ * danach** frei drehen darf, und die zweite Richtung entsteht durch Verketten
+ * vor der Lage.
+ *
+ * **Der Zugraum bleibt unberührt.** Diese Funktion fügt keinen Zug hinzu;
+ * `MOVE_COUNT` bleibt bei achtzehn, und der Löser sieht keinen Unterschied.
+ */
+export function composeStates(first, second) {
+  const next = { cp: new Array(8), co: new Array(8), ep: new Array(12), eo: new Array(12) };
+  for (let i = 0; i < 8; i++) {
+    next.cp[i] = first.cp[second.cp[i]];
+    next.co[i] = (first.co[second.cp[i]] + second.co[i]) % 3;
+  }
+  for (let i = 0; i < 12; i++) {
+    next.ep[i] = first.ep[second.ep[i]];
+    next.eo[i] = (first.eo[second.ep[i]] + second.eo[i]) % 2;
+  }
+  return next;
+}
+
 /** Der Zug, der den übergebenen aufhebt. U wird zu U', U2 bleibt U2. */
 export function inverseMove(move) {
   const face = Math.floor(move / 3);

@@ -332,6 +332,27 @@ p:last-child {
   color: var(--text-leise);
 }
 
+/* Der Name des Verfahrens über einem Lernbereich, 4T-0121.
+
+   **Sie entsteht mit dem zweiten Lernbereich und nicht vorher.** Solange der
+   Lernpfad allein stand, sagte seine Marke alles; seit der Übergang daneben
+   steht, sind es zwei Wege durch denselben Zauberwürfel, und welcher gerade
+   gemeint ist, muss vor dem ersten Wort feststehen.
+
+   **Zentriert und schwerer als die Bereichsmarke daneben**, denn sie ordnet
+   ihr über. Kein Quadrat davor: Das markiert den Beginn eines Bereichs, und
+   der beginnt eine Zeile später. Ein eigener Absatz und keine zweite
+   Überschrift, damit die Gliederung der Seite eine Ebene behält. */
+.marke-verfahren {
+  margin: 0 0 var(--abstand-1);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: var(--sperrung);
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--gold-hell);
+}
+
 /* Bereichsüberschrift mit vorangestelltem Quadrat. Das Quadrat markiert den
    Beginn eines Bereichs, ohne ihn zu einer Überschrift aufzublasen. */
 .marke-bereich {
@@ -545,19 +566,45 @@ p:last-child {
   min-height: 0;
 }
 
+/* Die Hülle eines Verfahrens, 4T-0137. Sie klammert die Bereiche, die zu einem
+   Verfahren gehören, und trägt seine Marke; CFOP hat seit dem Training zwei,
+   das Anfängerverfahren einen.
+
+   **Sie trägt selbst keine Fläche.** Ein zweiter Rahmen um zwei gerahmte
+   Bereiche zöge eine Ordnung ein, die es nicht gibt: Das Verfahren ist kein
+   Bereich, sondern die Auskunft darüber, wozu die darunter gehören.
+
+   **Kein `gap`, sondern ein Abstand zwischen den Flächen.** Ein `gap` gälte
+   auch zwischen Marke und erster Fläche, und die Marke gehört näher an ihre
+   Gruppe als zwei Flächen aneinander. Die Marke behält deshalb ihr eigenes
+   `margin-bottom` aus `.marke-verfahren`, und nur zwischen zwei Flächen steht
+   der Abstand, den auch `#begleitung` zwischen seinen Kindern hält. */
+.verfahren > .flaeche + .flaeche {
+  margin-top: var(--abstand-3);
+}
+
 #bedienung {
   grid-area: bedienung;
 }
 
-/* Aufklapper, zweimal im Programm: der Bereich «Bedienung» seit 4T-0060 und der
-   Lernpfad seit 4T-0061. **Sie sehen gleich aus und werden verschieden
-   bedient**, und das ist Absicht. Die Einstellungen klappt der Anwender selbst
-   zu, weil er sie selten braucht; den Lernpfad klappt das Programm zu, wenn der
-   Anwender in das Lösen wechselt. Ein Anwender, der zweierlei Gestalt für
-   dasselbe Verhalten sähe, müsste zweimal lernen, was ein Dreieck bedeutet.
+/* Aufklapper, seit 4T-0130 fünfmal im Programm: der Bereich «Bedienung» seit
+   4T-0060, der innere des Lernpfads seit 4T-0061 und der des Übergangs seit
+   4T-0120, dazu die beiden äußeren um die Verfahrensbereiche. **Sie sehen
+   gleich aus und werden verschieden bedient**, und das ist Absicht. Die
+   Einstellungen und die beiden Verfahrensbereiche klappt der Anwender selbst
+   zu; die inneren klappt das Programm zu, wenn der Anwender in das Lösen
+   wechselt. Ein Anwender, der zweierlei Gestalt für dasselbe Verhalten sähe,
+   müsste zweimal lernen, was ein Dreieck bedeutet.
+
+   **Der Preis ist benannt und in 3E-0041 angenommen:** In einem aufgeklappten
+   Verfahrensbereich stehen zwei Aufklappzeichen ineinander. Ein gemeinsamer
+   Aufklapper für beide Bedienungen wäre billiger zu sehen und teurer zu
+   benutzen, denn dann klappte der Bereich beim nächsten Wechsel in das Lösen
+   wieder auf, den der Anwender gerade weggeräumt hat.
 
    Gemessen am 2026-08-17 bei 1920 × 1080: Der Bereich «Bedienung» misst offen
-   1225 und geschlossen 74 px, der Lernpfad 812 gegen 51 px.
+   1225 und geschlossen 74 px, der Lernpfad 812 gegen 51 px. Die Messung zu den
+   äußeren Aufklappern steht in 4T-0130.
 
    **Die Marke ist die Überschrift des Bereichs.** `summary` nimmt genau ein
    Überschriftselement auf, und beim Bereich «Bedienung» behält nur so
@@ -592,6 +639,18 @@ p:last-child {
    Punkte, und die steht dem Titel näher. */
 #bedienung-klappe[open] > summary {
   margin-bottom: var(--abstand-3);
+}
+
+/* Die beiden äußeren Aufklapper halten den kleinen Abstand, 4T-0130. **Er ist
+   genau der, den die Bereichsmarke vor dem Umbau trug**, gemessen 8 px, und die
+   Zahl ist der Grund: Mit dem Grundmaß wuchs der offene Bereich um 9 px und die
+   Seite um 19 px, gemessen am 2026-08-29. Ein Griff, der Platz schaffen soll,
+   darf im offenen Zustand keinen kosten; so bleiben 1 bis 3 px übrig, und die
+   gehen auf das Aufklappzeichen, das die Marke höher macht als zuvor. */
+#lernpfad-klappe[open] > summary,
+#uebergang-klappe[open] > summary,
+#training-klappe[open] > summary {
+  margin-bottom: var(--abstand-1);
 }
 
 /* Der Grundverlauf ist bewusst kaum wahrnehmbar. Er nimmt der Fläche das
@@ -1382,6 +1441,623 @@ button.ruhend:hover {
   box-shadow: var(--glanz-kante);
 }
 
+/* Ein gesperrtes Segment, 4T-0138. **Die Regel hat gefehlt**, und das war kein
+   Versäumnis: In den Einstellungen ist nie ein Segment gesperrt, und was es
+   nicht gibt, wird nicht gestaltet. Im Training gibt es das, denn eine Stufe,
+   die noch nicht frei ist, steht dort zur Ansicht und nicht zur Wahl.
+
+   **Ohne sie schlug `.segmente button` die Sperrfarbe aus 4T-0063 nieder**,
+   weil beide Regeln dieselbe Spezifität tragen und die spätere gewinnt. Am
+   2026-08-31 an der laufenden Seite gemessen: Das gesperrte Segment stand auf
+   #b5a98f, der Farbe eines wählbaren, und war von ihm nicht zu unterscheiden.
+
+   Der Unterschied ist wie dort einer der Helligkeit und nicht des Farbtons;
+   eine zweite Randart scheidet aus, weil ein Segment keinen eigenen Rand hat. */
+.segmente button:disabled {
+  color: var(--text-gesperrt);
+}
+
+/* Der Trainingsbereich, 4T-0138. Zwei Segmentschalter untereinander, jeder mit
+   seiner Beschriftung, darunter der Umfang der Wahl und ein Hinweis.
+
+   **Er borgt sich den Segmentschalter und baut keinen eigenen.** Die Bauform
+   steht seit 4T-0025 für die Palette und die Ansicht, sie sagt genau das
+   Richtige aus, nämlich genau eine von wenigen Möglichkeiten, und sie trägt
+   `aria-pressed` bereits. Eine zweite Gestalt für dieselbe Bedeutung müsste
+   der Anwender ein zweites Mal lernen. */
+.training {
+  display: flex;
+  flex-direction: column;
+  gap: var(--abstand-1);
+}
+
+/* Die Beschriftung über einem Schalter. Wie `.marke-unterzeile` gebaut und
+   nicht von ihr geliehen: Jene benennt die Unterzeile des Kopfes, und zwei
+   Bedeutungen an einer Klasse laufen einander früher oder später davon. */
+.training-marke {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: var(--sperrung);
+  text-transform: uppercase;
+}
+
+/* Luft vor der zweiten Beschriftung. Ohne sie stünden Schalter und die
+   Beschriftung des nächsten gleich weit auseinander wie Beschriftung und ihr
+   eigener Schalter, und die Zusammengehörigkeit ginge verloren. */
+.segmente + .training-marke {
+  margin-top: var(--abstand-2);
+}
+
+/* Die Stufen stehen untereinander und die Übungsformen nebeneinander, und das
+   ist gemessen: Die beiden Stufentitel sind 25 und 21 Zeichen lang und brächen
+   in einer halben Spaltenbreite auf drei Zeilen um, die Namen der Übungsformen
+   mit 8 und 9 Zeichen nicht. */
+.training-stufen {
+  flex-direction: column;
+}
+
+/* Der Umfang der Wahl, ihre erste Wirkung. Gold, weil er die Antwort auf die
+   Wahl darüber ist und nicht ihre Fußnote. */
+.training-umfang {
+  margin: var(--abstand-2) 0 0;
+  color: var(--gold-hell);
+}
+
+/* Die Erkennungsübung, 4T-0139. Die Schaltfläche, die die Aufgabe stellt,
+   steht in einer eigenen Reihe unter dem Umfang.
+
+   **Die Reihe braucht ihre eigene Rücknahme.** `.datei-reihe` setzt
+   `display: flex`, und das schlägt `hidden` nieder; ohne diese Regel bliebe
+   die Schaltfläche stehen, wo die getroffene Wahl nichts zu üben gibt.
+   Dieselbe Lage und dasselbe Mittel wie bei `.hinweis[hidden]`. */
+.training-uebung {
+  margin-top: var(--abstand-2);
+}
+
+.training-uebung[hidden] {
+  display: none;
+}
+
+/* Die Frage über den Antworten. **Sie tritt nicht zurück**, denn sie ist die
+   Aufgabe selbst und nicht die Beschriftung einer Bedienung. */
+.training-frage {
+  margin: var(--abstand-2) 0 var(--abstand-1);
+  color: var(--gold-hell);
+}
+
+/* Die Namen der Fälle, untereinander und über die volle Breite.
+
+   **Gemessen und nicht geschätzt:** Der längste Name trägt 43 Zeichen im
+   Deutschen und 46 im Englischen, der kürzeste neun. Nebeneinander gesetzt
+   bräche ein Teil von ihnen um, und eine Reihe aus verschieden hohen
+   Schaltflächen ist schwerer zu treffen als eine Spalte aus gleich hohen.
+   Dieselbe Begründung trägt `.training-stufen` eine Bauform weiter oben. */
+.training-antworten {
+  display: flex;
+  flex-direction: column;
+  gap: var(--abstand-1);
+}
+
+.training-antworten[hidden] {
+  display: none;
+}
+
+/* Das Urteil über die Antwort, als Balken links wie die Rückmeldung des
+   Stufenbereichs und aus demselben Grund: Eine farbige Fläche neben dem
+   Würfel zöge den Blick vom Gegenstand ab, und dorthin gehört er beim Üben. */
+.training-urteil {
+  margin: var(--abstand-2) 0 0;
+  padding: var(--abstand-1) var(--abstand-2);
+  border-left: 2px solid var(--gold);
+  color: var(--gold);
+  font-size: 0.8125rem;
+}
+
+.training-urteil[data-art='erfolg'] {
+  border-left-color: var(--erfolg);
+  color: var(--erfolg);
+}
+
+/* Die Merkmale nach einem Fehler, 4T-0140. Zwei Blöcke untereinander, jeder
+   mit seiner Marke und einem Absatz.
+
+   **Sie tragen keinen Balken.** Das Urteil darüber hat einen, und ein zweiter
+   direkt darunter machte aus der Rückmeldung eine Leiste aus Strichen; die
+   Merkmale gehören zum Urteil und sind ihm nachgeordnet, nicht gleichrangig. */
+.training-merkmale {
+  display: flex;
+  flex-direction: column;
+  gap: var(--abstand-2);
+  margin-top: var(--abstand-2);
+}
+
+.training-merkmale[hidden] {
+  display: none;
+}
+
+.training-merkmal[hidden] {
+  display: none;
+}
+
+/* Die Marke nennt, wessen Merkmal folgt. Gold wie der Umfang, weil sie eine
+   Antwort ist und keine Beschriftung einer Bedienung. */
+.training-merkmal-marke {
+  margin: 0 0 var(--abstand-1);
+  color: var(--gold-hell);
+  font-size: 0.8125rem;
+}
+
+/* Der Merkmalstext selbst. **Gemessen 81 bis 240 Zeichen je Absatz**, über alle
+   sechzehn Fälle in beiden Sprachen; das ist Lesetext und trägt deshalb die
+   Leseschrift des Bereichs und keine verkleinerte. */
+.training-merkmal-text {
+  margin: 0;
+  color: var(--text-leise);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+/* Die Auskunft nach einem aufgegebenen Versuch, 4T-0142. Sie steht unter dem
+   Urteil wie die Merkmale und trägt denselben Abstand; beide beantworten
+   dieselbe Frage für ihre Übungsform und sollen nicht verschieden aussehen.
+
+   **Die eigene Rücknahme ist nötig**, weil die Regel darüber `display` setzt
+   und das `hidden` niederschlägt. Dieselbe Lage und dasselbe Mittel wie bei
+   `.training-merkmale[hidden]`. */
+.training-auskunft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--abstand-1);
+  margin-top: var(--abstand-2);
+}
+
+.training-auskunft[hidden] {
+  display: none;
+}
+
+/* Die Marke nennt, was folgt. Gold wie die Marke der Merkmale und aus
+   demselben Grund: Sie ist eine Antwort und keine Beschriftung einer
+   Bedienung. */
+.training-auskunft-marke {
+  margin: 0;
+  color: var(--gold-hell);
+  font-size: 0.8125rem;
+}
+
+/* Die Zugfolge selbst. **Gemessen 6 bis 19 Züge**, über alle sechzehn Fälle;
+   der längste Wortlaut trägt 48 Zeichen. Die Notationsschrift kommt über die
+   Klasse `.notation`; hier steht nur, was diese Zeile von den Absätzen um sie
+   herum unterscheidet. */
+.training-folge {
+  margin: 0 0 var(--abstand-1);
+  color: var(--text);
+  font-size: 0.9375rem;
+  letter-spacing: var(--sperrung);
+}
+
+/* Der Absatz zur Ausrichtung. **Gemessen 105 bis 236 Zeichen** in beiden
+   Sprachen; das ist Lesetext und trägt dieselbe Behandlung wie der
+   Merkmalstext. */
+.training-ausrichtung {
+  margin: 0;
+  color: var(--text-leise);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+/* Die Messwerte je Fall, 4T-0143. Ein Aufklapper unter der Übung, offen als
+   Vorgabe.
+
+   **Der Abstand steht hier und nicht an der Tabelle**, damit er auch im
+   geschlossenen Zustand gilt: Dann ist die Tabelle aus der Darstellung, ihr
+   Rand wäre es mit und die Marke rückte an die Übung heran. */
+.training-messwerte {
+  margin-top: var(--abstand-2);
+}
+
+/* Die eigene Rücknahme, weil `.klappe` im Bestand kein `display` setzt, dieser
+   Bereich aber `display: flex` auf `.training` trägt und das an jedes Kind
+   vererbt wird, was `hidden` niederschlägt. Dieselbe Lage und dasselbe Mittel
+   wie bei `.training-uebung[hidden]`. */
+.training-messwerte[hidden] {
+  display: none;
+}
+
+/* Die Marke im Aufklapper. Kleiner als der Stufentitel, denn sie benennt eine
+   Auskunft innerhalb eines Bereichs und nicht den Bereich selbst. */
+.training-messwerte-marke {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+/* Die Tabelle über die volle Breite. **`table-layout: fixed` ist nötig**, weil
+   die Namen gemessen 49 bis 230 px tragen und die Zahlenspalten sonst je nach
+   Stufe anders säßen; der Blick soll sie an derselben Stelle finden. */
+/* Der Rollbereich um die Tabelle, 4T-0174.
+
+   **Dieselbe Grenze und dasselbe Mittel wie bei der Deckungsliste im
+   Übergang**, `.stufe-deckung` weiter unten: 16rem mit Rollbereich. Zwei
+   Bauformen für dieselbe Frage wären zwei Stellen, an denen sie zu entscheiden
+   ist, und der Anwender müsste zwei Verhaltensweisen lernen.
+
+   **Gemessen wächst die Tabelle sonst ungebremst mit der Fallzahl**, von 237 px
+   bei zehn Fällen auf 1215 px bei siebenundfünfzig. Die Deckungsliste ist als
+   einzige der drei Anzeigen von der Fallzahl unberührt und war deshalb das
+   Vorbild.
+
+   **Der Rahmen rollt und nicht die Tabelle.** Eine Tabelle mit `display: block`
+   verliert `table-layout: fixed`, weil `thead` und `tbody` zu anonymen Boxen
+   werden; die Spaltenaufteilung der ersten Zeile gälte dann nicht mehr, und die
+   Fallnamen brächen um. Das ist derselbe Irrtum wie am 2026-09-02, als die
+   Breitenangabe an der Zelle im Rumpf stand. */
+.training-messwerte-rahmen {
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.training-messwerte-tabelle {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+/* Die Kopfzeile tritt zurück: Sie benennt die Spalten und ist nicht die
+   Auskunft. Gesperrte Versalien wie bei den Marken der Wahl darüber, und aus
+   demselben Grund; die Wörter tragen 4 bis 9 Zeichen. */
+.training-messwerte-tabelle th {
+  text-align: left;
+  font-weight: normal;
+}
+
+/* **Die Kopfzeile bleibt beim Rollen stehen**, 4T-0174. Ohne sie rollten die
+   Zahlen unter ihrer eigenen Beschriftung weg, und bei drei Spalten aus lauter
+   Zahlenpaaren sagt allein die Kopfzeile, welche Spalte welche Übungsform ist.
+
+   **Der eigene Grund liegt an `border-collapse: collapse`:** Dort gehört der
+   Rand der Zelle der Tabelle und nicht der Zelle, und er bliebe beim Rollen
+   zurück. Der Schatten setzt ihn deshalb neu; die Zierlinie darüber bleibt
+   stehen, damit die Regel ohne Rollbereich unverändert wirkt.
+
+   **Der Grundton ist gemessen und nicht gewählt.** Die Kopfzeile stand vorher
+   auf einem durchscheinenden Grund; wer sie zum Haften bringt, muss ihr den
+   Ton geben, der hinter ihr liegt, sonst rollen die Zeilen sichtbar hindurch.
+   Am 2026-09-04 an der laufenden Seite abgelesen: Der erste deckende Vorfahr
+   trägt `rgb(13, 11, 7)`, und das ist `--grund-0`. Die naheliegende Annahme
+   `--grund-1` war falsch. */
+.training-messwerte-tabelle thead th {
+  position: sticky;
+  top: 0;
+  padding-bottom: var(--abstand-1);
+  border-bottom: var(--zierlinie);
+  box-shadow: inset 0 -1px 0 var(--gold-dunkel);
+  background: var(--grund-0);
+  color: var(--text-leise);
+  font-size: 0.75rem;
+  letter-spacing: var(--sperrung);
+  text-transform: uppercase;
+}
+
+/* **Die Spaltenbreite gehört an die Kopfzeile und nicht an die Zellen
+   darunter.** Bei `table-layout: fixed` bestimmt allein die erste Zeile die
+   Aufteilung; dieselbe Angabe an der Zelle im Rumpf wirkt gar nicht. Am
+   2026-09-02 gemessen: Sie stand dort, die drei Spalten teilten sich die
+   Breite zu gleichen Teilen, und die Namen brachen auf zwei Zeilen um.
+
+   **56 Prozent, und die Zahl ist gemessen:** Der längste deutsche Name misst
+   230 px von 491 px, der längste englische 255; bei 56 Prozent bleiben 275 px,
+   und damit steht in beiden Sprachen jeder Name einzeilig. */
+.training-messwerte-tabelle thead th:first-child {
+  width: 56%;
+}
+
+/* Der Name des Falls. Die Spaltenbreite steht an der Kopfzeile, siehe dort.
+
+   **Der Zeilenabstand trägt die Höhe und kein Innenrand.** Zehn Zeilen mit je
+   8 px oben und unten ergaben gemessen 459 px für die Tabelle; über die
+   Zeilenhöhe sind es 21 px je Zeile, dieselben wie bei der Deckungsliste im
+   Übergang. */
+.training-messwert-name {
+  padding: 0 var(--abstand-1) 0 0;
+  color: var(--text-leise);
+  line-height: 1.6;
+}
+
+/* Das Zurücksetzen unter der Liste, 4T-0144. `.datei-reihe` trägt die
+   Ausrichtung; hier steht allein der Abstand zur Tabelle darüber. */
+.training-zuruecksetzen {
+  margin-top: var(--abstand-2);
+}
+
+/* Die Zahlen. Gold, weil sie die Auskunft sind, auf die es hier ankommt, und
+   in der Notationsschrift nicht: Es sind Zahlen und keine Züge. */
+.training-messwert-zahlen {
+  padding: 0;
+  color: var(--gold-hell);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* Die Zeitnahme, 4T-0147. Ein Bereich wie das Training darüber und mit
+   derselben Grundform: eine Spalte mit gleichem Abstand zwischen den Stücken. */
+.zeitnahme {
+  display: flex;
+  flex-direction: column;
+  gap: var(--abstand-1);
+}
+
+/* Der geltende Weg über der Uhr. Die Luft darüber trennt ihn von der Wahl. */
+.zeitnahme-weg {
+  margin: var(--abstand-2) 0 0;
+}
+
+/* Die Uhr. **Groß und mit gleich breiten Ziffern**, und beides aus demselben
+   Grund: Sie wird beim Lösen aus dem Augenwinkel gelesen. Proportionale Ziffern
+   ließen die Zahl bei jedem Zehntel in der Breite springen, und eine Zahl, die
+   zappelt, ist genau dann unleserlich, wenn niemand hinsehen kann. */
+.zeitnahme-uhr {
+  margin: 0;
+  color: var(--gold-hell);
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+/* Das Ergebnis als Balken links, wie das Urteil des Trainings und die
+   Rückmeldung des Stufenbereichs. Eine farbige Fläche neben dem Würfel zöge
+   den Blick vom Gegenstand ab. */
+.zeitnahme-ergebnis {
+  margin: 0;
+  padding: var(--abstand-1) var(--abstand-2);
+  border-left: 2px solid var(--erfolg);
+  color: var(--erfolg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Beide Reihen brauchen ihre eigene Rücknahme. `.datei-reihe` setzt
+   `display: flex`, und das schlägt `hidden` nieder; ohne diese Regel bliebe
+   die Wahl während eines laufenden Durchgangs stehen und die Steuerung davor.
+   Dieselbe Lage und dasselbe Mittel wie bei `.training-uebung[hidden]`. */
+.zeitnahme-wege[hidden],
+.zeitnahme-steuerung[hidden] {
+  display: none;
+}
+
+.zeitnahme-steuerung {
+  margin-top: var(--abstand-2);
+}
+
+/* Der Verlauf, 4T-0153. Ein Aufklapper unter dem Hinweis, zugeklappt als
+   Vorgabe.
+
+   **Der Abstand steht hier und nicht am ersten Weg darin**, damit er auch im
+   geschlossenen Zustand gilt: Dann sind die Wege aus der Darstellung, ihr Rand
+   wäre es mit und die Marke rückte an den Hinweis heran. Dieselbe Lage und
+   dasselbe Mittel wie bei `.training-messwerte`. */
+.zeitnahme-verlauf {
+  margin-top: var(--abstand-2);
+}
+
+/* Die eigene Rücknahme, weil `.klappe` im Bestand kein `display` setzt, dieser
+   Bereich aber `display: flex` auf `.zeitnahme` trägt und das an jedes Kind
+   vererbt wird, was `hidden` niederschlägt. Dieselbe Lage wie bei
+   `.zeitnahme-wege[hidden]`. */
+.zeitnahme-verlauf[hidden] {
+  display: none;
+}
+
+/* Die Marke im Aufklapper. Kleiner als die Bereichsmarke, denn sie benennt eine
+   Auskunft innerhalb eines Bereichs und nicht den Bereich selbst; dieselbe
+   Größe wie bei den Messwerten des Trainings. */
+.zeitnahme-verlauf-marke {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+/* Ein Weg mit seinen Kennzahlen und seiner Liste. Der Abstand trennt ihn vom
+   vorigen; der erste sitzt unter der Erklärung und trägt ihn ebenso. */
+.zeitnahme-verlauf-weg {
+  margin-top: var(--abstand-2);
+}
+
+/* Der Name des Weges. Gesperrte Versalien wie die Kopfzeilen der Tabellen und
+   aus demselben Grund: Er benennt eine Gruppe und ist nicht die Auskunft. */
+.zeitnahme-verlauf-wegmarke {
+  margin: 0 0 var(--abstand-1);
+  color: var(--text-leise);
+  font-size: 0.75rem;
+  font-weight: normal;
+  letter-spacing: var(--sperrung);
+  text-transform: uppercase;
+}
+
+/* Der Satz für einen Weg ohne Versuch. Leise wie die Erklärungen, denn er sagt,
+   dass nichts da ist, und ist keine Auskunft über eine Zeit. */
+.zeitnahme-verlauf-leer {
+  margin: 0;
+  color: var(--text-leise);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+/* Bestzeit und Durchschnitte in einer Reihe. **Eine Zeile und keine drei**, und
+   das ist gemessen: Mit den drei Paaren nebeneinander trägt die Reihe 21 px,
+   untereinander wären es 63 px je Weg und damit 84 px mehr im Bereich. */
+.zeitnahme-verlauf-kennzahlen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--abstand-1) var(--abstand-2);
+  margin: 0 0 var(--abstand-1);
+  font-size: 0.8125rem;
+}
+
+.zeitnahme-verlauf-kennzahlen[hidden] {
+  display: none;
+}
+
+/* Ein Paar aus Name und Wert. **Der engere Abstand innerhalb des Paares** ist
+   der Grund für den Umschlag: Nähe stiftet Zugehörigkeit, und ohne ihn stünde
+   «Bestzeit» von seiner Zahl so weit wie von der nächsten Kennzahl. */
+.zeitnahme-verlauf-kennzahl {
+  display: flex;
+  gap: var(--abstand-1);
+  line-height: 1.6;
+}
+
+.zeitnahme-verlauf-kennzahl dt {
+  color: var(--text-leise);
+}
+
+/* Der Wert. Gold und mit gleich breiten Ziffern, wie die Uhr und das Ergebnis:
+   Es sind Zeiten, und sie sollen untereinander zu vergleichen sein. */
+.zeitnahme-verlauf-kennzahl dd {
+  margin: 0;
+  color: var(--gold-hell);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Die Liste der Versuche. **`table-layout: fixed` wie bei den Messwerten**,
+   damit die drei Spalten unabhängig von der längsten Zeit an derselben Stelle
+   sitzen; der Blick soll die Zeit ohne Suchen finden. */
+.zeitnahme-verlauf-tabelle {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.zeitnahme-verlauf-tabelle th {
+  text-align: left;
+  font-weight: normal;
+}
+
+.zeitnahme-verlauf-tabelle thead th {
+  padding-bottom: var(--abstand-1);
+  border-bottom: var(--zierlinie);
+  color: var(--text-leise);
+  font-size: 0.75rem;
+  letter-spacing: var(--sperrung);
+  text-transform: uppercase;
+}
+
+/* Die Spaltenbreiten gehören an die Kopfzeile: Bei `table-layout: fixed`
+   bestimmt allein die erste Zeile die Aufteilung, und dieselbe Angabe an einer
+   Zelle im Rumpf wirkt gar nicht. Am 2026-09-02 bei den Messwerten gemessen
+   und dort kommentiert.
+
+   **Die vier Zahlen sind gemessen**, am 2026-09-03 in beiden Sprachen und bei
+   683 px Tabellenbreite. Je Spalte steht der größere Wert aus Kopfzeile und
+   Inhalt: 67 px für «VERSUCH» gegen 43 px für eine vierstellige Nummer, 70 px
+   für «1:27,20 s», 128 px für «03/09/2026, 17:28» und 57 px für «verwerfen».
+   Mit 16, 22 und 32 Prozent bleiben 109, 150 und 219 px, und die vierte Spalte
+   nimmt mit 30 Prozent den Rest; ihre Luft liegt links vom rechts
+   ausgerichteten Griff.
+
+   **Die Angabe der vierten Spalte fehlt bewusst.** Eine Tabelle mit vier
+   festen Prozentwerten müsste bei jeder Änderung auf hundert gerechnet werden;
+   die letzte Spalte nimmt, was übrig ist. */
+.zeitnahme-verlauf-tabelle thead th:first-child {
+  width: 16%;
+}
+
+.zeitnahme-verlauf-tabelle thead th:nth-child(2) {
+  width: 22%;
+}
+
+.zeitnahme-verlauf-tabelle thead th:nth-child(3) {
+  width: 32%;
+}
+
+/* Die laufende Nummer. Leise, denn sie ordnet und ist nicht die Auskunft. */
+.zeitnahme-verlauf-nummer {
+  padding: 0 var(--abstand-1) 0 0;
+  color: var(--text-leise);
+  line-height: 1.6;
+}
+
+/* Die Zeit. Gold wie die Kennzahlen und aus demselben Grund. */
+.zeitnahme-verlauf-zeit {
+  padding: 0 var(--abstand-1) 0 0;
+  color: var(--gold-hell);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* Der Zeitpunkt. Leise, denn er ordnet die Zeit in den Kalender ein und ist
+   nicht das Gemessene. */
+.zeitnahme-verlauf-zeitpunkt {
+  padding: 0;
+  color: var(--text-leise);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* Der Satz über die nicht gezeigten Versuche. Er steht unter der Liste, weil er
+   von ihrem Ende spricht. */
+.zeitnahme-verlauf-mehr {
+  margin-top: var(--abstand-1);
+}
+
+/* Die Zahl in der Kennzahlenliste. Sie steht in einem eigenen Knoten, weil der
+   Griff zum Verwerfen daneben in dieselbe Zelle gehört. */
+.zeitnahme-verlauf-wert {
+  white-space: nowrap;
+}
+
+/* Die Zelle mit dem Griff zum Verwerfen, 4T-0154. Rechts ausgerichtet, damit
+   die Griffe eine Spalte bilden und nicht hinter Zeiten verschiedener Länge
+   einrücken. */
+.zeitnahme-verlauf-griff {
+  padding: 0;
+  text-align: right;
+}
+
+/* Der Griff zum Verwerfen, 4T-0154. **Ein schlanker Textgriff und keine
+   Schaltfläche des Bestands**, und das ist gemessen: Mit dem Polster, den
+   Versalien und dem Goldverlauf einer gewöhnlichen Schaltfläche misst eine
+   Zeile 41,3 px statt 23,3, und der Bereich stünde bei zwölf Zeilen je Weg bei
+   1557 px statt 1125. Vierundzwanzig goldene Flächen untereinander wären zudem
+   eine Wand neben einer Spalte aus Zahlen, und der Blick fände die Zeit nicht
+   mehr.
+
+   **Er sieht trotzdem wie ein Griff aus**, nämlich unterstrichen und mit
+   Zeigefinger; ein Wort ohne beides wäre von der Auskunft daneben nicht zu
+   unterscheiden. */
+.zeitnahme-verlauf-verwerfen {
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--text-leise);
+  font-size: 0.8125rem;
+  font-weight: normal;
+  letter-spacing: normal;
+  line-height: 1.6;
+  text-transform: none;
+  text-decoration: underline;
+}
+
+/* Beim Überfahren tritt er hervor. Der Wechsel auf Gold sagt, dass er etwas
+   tut, und die Zeit daneben bleibt davon unberührt. */
+.zeitnahme-verlauf-verwerfen:hover {
+  color: var(--gold-hell);
+}
+
+/* In der Kennzahlenliste sitzt er neben der Zahl und braucht seinen Abstand;
+   in der Tabelle trägt die Zelle die Ausrichtung. */
+.zeitnahme-verlauf-kennzahl .zeitnahme-verlauf-verwerfen {
+  margin-left: var(--abstand-1);
+}
+
+/* Das Löschen des ganzen Verlaufs, 4T-0154. `.datei-reihe` trägt die
+   Ausrichtung; hier steht allein der Abstand zu den Wegen darüber. Dieselbe
+   Bauform wie `.training-zuruecksetzen`. */
+.zeitnahme-verlauf-loeschen {
+  margin-top: var(--abstand-2);
+}
+
 /* Kippschalter. Es gibt kein eigenes Element dafür, deshalb ein Kästchen
    ohne Standardaussehen. */
 .kippschalter {
@@ -1979,6 +2655,341 @@ select {
 }
 
 .lektion-rueckmeldung[hidden] {
+  display: none;
+}
+
+/* -------------------------------------------------- Stufenbereich, 4T-0120
+
+   Der Bereich des Übergangs zum Verfahren CFOP. Er steht an derselben Stelle
+   wie der Lektionsbereich und teilt dessen Maßverhältnisse, damit der Wechsel
+   zwischen beiden das Layout nicht springen lässt.
+
+   **Die Klassen sind eigene und keine geteilten.** Dieselbe Entscheidung wie
+   beim Modul: Wer beide Bereiche über eine Klasse führte, könnte die eine
+   Anzeige nicht mehr ändern, ohne die andere anzufassen. Was sich deckt, deckt
+   sich hier ausgeschrieben und nachprüfbar.
+
+   Alle Maße in rem und keines in Pixeln, aus demselben Grund wie oben: Die
+   Schriftgröße ist in vier Stufen einstellbar.
+
+   Ohne jede Bewegung, und die Einstellung «Bewegung: Aus» darf keinen Zustand
+   verstecken. */
+
+.stufe {
+  margin-bottom: var(--abstand-3);
+}
+
+.stufe-zaehlung {
+  margin: 0 0 var(--abstand-1);
+  font-size: 0.8125rem;
+}
+
+.stufe-titel {
+  margin: 0 0 var(--abstand-2);
+  font-size: 1.125rem;
+}
+
+/* Die vier Stufen als Reihe, Navigation und Fortschrittsanzeige in einem. */
+.stufe-uebersicht {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--abstand-1);
+  margin-bottom: var(--abstand-2);
+}
+
+.stufe-punkt {
+  min-width: 2.25rem;
+  padding: var(--abstand-1) 0;
+  text-align: center;
+  color: var(--gold);
+  background: var(--grund-2);
+  border: 1px solid var(--gold-dunkel);
+  box-shadow: none;
+}
+
+/* **Der Zustand hängt nicht allein an der Farbe**, wie bei den Lektionen und
+   bei der Kennzeichnung der Würfelfelder: Füllung und Randart tragen die
+   Aussage mit. Abgeschlossen ist gefüllt, offen umrandet, übersprungen
+   gestrichelt, gesperrt zurückgenommen. */
+.stufe-punkt[data-zustand='abgeschlossen'] {
+  color: var(--grund-1);
+  background: linear-gradient(180deg, var(--gold-hell), var(--gold));
+  border-color: var(--gold-dunkel);
+  box-shadow: var(--glanz-kante);
+}
+
+.stufe-punkt[data-zustand='uebersprungen'] {
+  border-style: dashed;
+  color: var(--text-leise);
+}
+
+.stufe-punkt[data-zustand='gesperrt'] {
+  color: var(--text-gesperrt);
+  border-color: var(--gold-gesperrt);
+  background: var(--grund-1);
+}
+
+.stufe-punkt[aria-current='true'] {
+  outline: 2px solid var(--gold-hell);
+  outline-offset: 2px;
+}
+
+.stufe-schritte {
+  margin-bottom: var(--abstand-2);
+}
+
+/* Der Name des vorliegenden Falls. Kleiner als der Stufentitel darüber, weil
+   er unter ihm steht und nicht neben ihm: Die Stufe bleibt, der Fall wechselt
+   mit jedem Zug. */
+.stufe-fall {
+  margin: 0 0 var(--abstand-2);
+  font-size: 1rem;
+  color: var(--gold);
+}
+
+.stufe-fall[hidden] {
+  display: none;
+}
+
+/* Der Text der Stufe, über dem Fall und mit eigenem Rollbereich, 4T-0122. Er
+   trägt dieselben vier Bausteine wie eine Lektion und misst deutsch gemessen
+   4362 Zeichen, mehr als die längste Lektion mit 3968.
+
+   **Das Maß ist trotzdem kleiner als die 34rem des Lektionstextes**, und der
+   Grund steht darunter: Hier folgt ein zweiter Text.
+
+   Gemessen am 2026-08-28 bei 1920 × 1080: Der Text misst 1686 px, der Bereich
+   mit ihm 1074 px gegen 952 px beim Lernpfad. **Er bleibt damit höher als
+   jener, und das ist hingenommen.** Ein Maß, das beide gleichzöge, läge bei
+   rund 12rem und zeigte ein Achtel des Textes; das ist der Preis, der hier
+   nicht gezahlt wird. Was die Höhe der Seite angeht, ist 3E-0041 die Antwort
+   und nicht ein zu kleiner Rollbereich. */
+.stufe-lehrtext {
+  margin-bottom: var(--abstand-2);
+  max-height: 20rem;
+  overflow-y: auto;
+}
+
+/* Wie beim Lektions- und beim Falltext: Ein Rollbereich ohne fokussierbaren
+   Inhalt kommt von sich aus in die Tastaturreihenfolge. */
+.stufe-lehrtext:focus-visible {
+  outline: 2px solid var(--gold-hell);
+  outline-offset: 2px;
+}
+
+.stufe-lehrabsatz {
+  margin: 0 0 var(--abstand-2);
+}
+
+.stufe-lehrabsatz:last-child {
+  margin-bottom: 0;
+}
+
+/* Die begleitende Vorstellung aus Abschnitt 11.4 des Didaktik-Konzepts,
+   abgesetzt wie die einer Lektion und aus demselben Grund: Sie ist kein
+   weiterer Erklärungsabsatz, sondern das Bild, an dem der Anwender die Stufe
+   wiedererkennt. Derselbe Balken und dieselbe Kursive wie dort; eine zweite
+   Gestalt für dieselbe Sache müsste der Anwender zweimal lernen. */
+.stufe-lehrabsatz[data-baustein='vorstellung'] {
+  padding-left: var(--abstand-2);
+  border-left: 2px solid var(--gold-dunkel);
+  font-style: italic;
+}
+
+/* Die Anweisung für die Übung steht am Ende des Stufentextes und nicht
+   unmittelbar über dem Knopf, anders als bei einer Lektion: Zwischen ihr und
+   dem Knopf steht hier der Fall. Der Abstand davor trennt sie von der
+   Erklärung, ohne eine zweite Überschrift zu brauchen. */
+.stufe-lehrabsatz[data-baustein='aufgabe'] {
+  margin-top: var(--abstand-3);
+}
+
+/* Der Falltext rollt in seinem eigenen Bereich, wie der Lektionstext seit
+   4T-0060. Das Maß ist kleiner, weil hier zwei Bausteine stehen und nicht
+   vier: Erkennungsbild und Erklärung messen gemessen 197 bis 448 und 346 bis
+   682 Zeichen. */
+.stufe-text {
+  margin-bottom: var(--abstand-2);
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+/* Ein Rollbereich ohne fokussierbaren Inhalt kommt von sich aus in die
+   Tastaturreihenfolge. Ohne diese Zeile stünde dort der Ring des
+   Betriebssystems und nicht der dieser Oberfläche. */
+.stufe-text:focus-visible {
+  outline: 2px solid var(--gold-hell);
+  outline-offset: 2px;
+}
+
+.stufe-absatz {
+  margin: 0 0 var(--abstand-2);
+}
+
+.stufe-absatz:last-child {
+  margin-bottom: 0;
+}
+
+/* Das Erkennungsbild ist abgesetzt, die Erklärung nicht. Es sagt, woran der
+   Anwender den Fall erkennt und wie er den Würfel dafür hält, und das ist die
+   Auskunft, die er beim Üben sucht; die Erklärung liest er einmal. Derselbe
+   Balken wie bei der begleitenden Vorstellung einer Lektion, denn beide sagen
+   «sieh hier hin». */
+.stufe-absatz[data-baustein='bild'] {
+  padding-left: var(--abstand-2);
+  border-left: 2px solid var(--gold-dunkel);
+}
+
+.stufe-folgen:not(:empty) {
+  margin-bottom: var(--abstand-2);
+}
+
+/* Die Zugfolge auf der Schaltfläche ist bis zu neunzehn Züge lang. Sie bricht
+   deshalb um, statt die Reihe zu sprengen. Die Schrift der Notation setzt der
+   Bereich über die vorhandene Klasse `notation` und nicht dieser Block; eine
+   zweite Festlegung daneben liefe der ersten davon. */
+.stufe-folgen button {
+  white-space: normal;
+  text-align: left;
+}
+
+.stufe-ohne-fall[hidden] {
+  display: none;
+}
+
+.stufe-uebung {
+  margin-bottom: var(--abstand-2);
+}
+
+.stufe-uebung button[hidden],
+.stufe-schritte button[hidden] {
+  display: none;
+}
+
+.stufe-stand {
+  margin: 0 0 var(--abstand-2);
+  font-size: 0.8125rem;
+  color: var(--text-leise);
+}
+
+/* Die Wahl der Fassung, 4T-0171. **Über der Fallliste und unter dem Stand**,
+   denn sie bestimmt, welche Fälle die Liste führt und wie viele der Stand
+   verlangt; sie steht damit unmittelbar über ihrer eigenen Wirkung. Eine
+   Trennlinie darüber setzt sie vom Stand ab, ohne dass sie ein eigener Bereich
+   würde: Sie gehört zum Üben und nicht neben es. */
+.stufe-fassung {
+  margin: var(--abstand-2) 0;
+  padding-top: var(--abstand-2);
+  border-top: 1px solid var(--gold-gesperrt);
+}
+
+.stufe-fassung[hidden] {
+  display: none;
+}
+
+.stufe-fassung-marke {
+  margin: 0 0 var(--abstand-1);
+  font-size: 0.8125rem;
+}
+
+/* Der Satz über den Gewinn. Er steht zwischen Marke und Schaltflächen, weil er
+   die Wahl erklärt, die darunter zu treffen ist. */
+.stufe-fassung-gewinn {
+  margin: 0 0 var(--abstand-2);
+}
+
+.stufe-fassung-wahl {
+  margin-bottom: 0;
+}
+
+/* **Die geltende Fassung ist markiert und nicht gesperrt.** Ein gesperrter
+   Knopf sähe aus, als sei die Fassung nicht erreichbar; sie ist es gerade. Die
+   Bauform ist die der Wegwahl in der Zeitnahme, und der Zustand hängt wie dort
+   nicht allein an der Farbe: Die gewählte trägt zusätzlich die volle Füllung. */
+.stufe-fassung-punkt {
+  color: var(--gold);
+  background: var(--grund-2);
+  border: 1px solid var(--gold-dunkel);
+  box-shadow: none;
+}
+
+.stufe-fassung-punkt[data-gilt='true'] {
+  color: var(--grund-1);
+  background: linear-gradient(180deg, var(--gold-hell), var(--gold));
+  border-color: var(--gold-dunkel);
+  box-shadow: var(--glanz-kante);
+}
+
+/* Der Hinweis auf den Rückfall, 4T-0172. **Zurückhaltend und nicht als
+   Warnung**: Er nennt einen Weg und meldet keinen Fehler. Die Einrückung mit
+   der Marke am Rand hebt ihn aus dem Fließtext, ohne ihn zu betonen. */
+.stufe-rueckfall {
+  margin: 0 0 var(--abstand-2);
+  padding-left: var(--abstand-2);
+  border-left: 2px solid var(--gold-dunkel);
+  font-size: 0.9375rem;
+  color: var(--text-leise);
+}
+
+.stufe-rueckfall[hidden] {
+  display: none;
+}
+
+.stufe-deckung-marke {
+  margin: 0 0 var(--abstand-1);
+  font-size: 0.8125rem;
+}
+
+.stufe-deckung-marke[hidden],
+.stufe-deckung[hidden] {
+  display: none;
+}
+
+/* Die Fälle dieser Stufe, einer je Zeile. **Eine Liste und keine Reihe aus
+   Marken:** Die Namen messen gemessen 9 bis 43 Zeichen, und nebeneinander
+   gesetzt bräche jede zweite um und ergäbe ein unruhiges Feld. Untereinander
+   ist der Stand mit einem Blick abzulesen, und darum geht es hier. */
+.stufe-deckung {
+  margin: 0 0 var(--abstand-2);
+  padding: 0;
+  list-style: none;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+/* Wieder nicht allein die Farbe: Ein gelungener Fall trägt einen durchgezogenen
+   Balken in Gold, ein fehlender einen gestrichelten in Leise. */
+.stufe-fall-eintrag {
+  margin: 0 0 var(--abstand-1);
+  padding-left: var(--abstand-2);
+  border-left: 2px solid var(--gold);
+  font-size: 0.8125rem;
+  color: var(--gold);
+}
+
+.stufe-fall-eintrag[data-gelungen='false'] {
+  border-left-style: dashed;
+  border-left-color: var(--text-leise);
+  color: var(--text-leise);
+}
+
+/* Die Rückmeldung der Übung, als Balken links und nicht als Fläche: Eine
+   farbige Fläche neben dem Würfel zöge den Blick vom Gegenstand ab, und genau
+   dorthin gehört er beim Üben. */
+.stufe-rueckmeldung {
+  margin: var(--abstand-1) 0 0;
+  padding: var(--abstand-1) var(--abstand-2);
+  border-left: 2px solid var(--gold);
+  color: var(--gold);
+  font-size: 0.8125rem;
+}
+
+.stufe-rueckmeldung[data-art='erfolg'] {
+  border-left-color: var(--erfolg);
+  color: var(--erfolg);
+}
+
+.stufe-rueckmeldung[hidden] {
   display: none;
 }
 

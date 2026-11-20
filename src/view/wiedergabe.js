@@ -15,7 +15,14 @@
 // Grenzfälle ohne Browser prüfbar, auch der, um den es hier vor allem geht:
 // das Anhalten mitten in einer laufenden Bewegung.
 
-import { applyMoves, inverseMove, mergeSameFace, solvedCube, toFacelets } from '../core/cube.js';
+import { mergeSameFace, solvedCube } from '../core/cube.js';
+import {
+  SOLVED_ORIENTATION,
+  applyExtendedMoves,
+  inverseExtendedMove,
+  isFaceMove,
+  toOrientedFacelets,
+} from '../core/moves.js';
 
 /** Eine eigene Kopie eines Zustands. */
 const kopie = (zustand) => ({
@@ -51,8 +58,42 @@ export function erzeugeWiedergabe({ darstellung, warte, pause = () => 0 }) {
     for (const rueckruf of zuhoerer) rueckruf();
   };
 
-  /** Der Zustand an einer Stelle, gerechnet statt fortgeschrieben. */
-  const zustandAn = (n) => kopie(applyMoves(ausgang, zuege.slice(0, n)));
+  /**
+   * Zustand **und** Orientierung an einer Stelle, gerechnet statt
+   * fortgeschrieben.
+   *
+   * **Die Orientierung gehört seit 4T-0100 dazu.** Von den vierundfünfzig
+   * Zügen verschieben sechsunddreißig sie, und zwar nicht nur die neun
+   * Ganzdrehungen: Mittelschicht und Doppelschicht enthalten die mittlere
+   * Schicht und werden deshalb über den ganzen Würfel gerechnet. Ohne sie
+   * zeigte die Darstellung nach jedem solchen Zug einen Würfel, den es nicht
+   * gibt.
+   *
+   * **Der Ausgang steht immer unverdreht.** Die Zugfolge setzt auf dem
+   * Übungswürfel auf, und der führt nach der Entscheidung des Product Owners
+   * vom 2026-08-24 keine Orientierung. Ein Parameter dafür wäre ein Vorrat
+   * ohne Aufrufer.
+   *
+   * **Weiterhin gerechnet und nicht fortgeschrieben.** Damit trifft ein Sprung
+   * dieselbe Rechnung wie ein Vorwärtsgehen, und die beiden können nicht
+   * auseinander laufen.
+   */
+  const standAn = (n) => applyExtendedMoves(ausgang, zuege.slice(0, n), SOLVED_ORIENTATION);
+
+  /** Der Zustand an einer Stelle, ohne die Orientierung. */
+  const zustandAn = (n) => kopie(standAn(n).cube);
+
+  /**
+   * Die 54 Felder an einer Stelle, wie der Anwender sie sieht.
+   *
+   * Das ist es, was die Darstellung bekommt: der fertige Anblick und nicht der
+   * Modellzustand. Bei unverdrehter Orientierung kommt genau `toFacelets`
+   * heraus, die Wiedergabe einer Lösung des Lösers sieht davon also nichts.
+   */
+  const feldernAn = (n) => {
+    const stand = standAn(n);
+    return toOrientedFacelets(stand.cube, stand.orientation);
+  };
 
   /**
    * Beendet ein laufendes Abspielen.
@@ -87,7 +128,7 @@ export function erzeugeWiedergabe({ darstellung, warte, pause = () => 0 }) {
     const neu = Math.min(Math.max(Math.trunc(ziel) || 0, 0), zuege.length);
     stelle = neu;
     darstellung.haltAn();
-    darstellung.zeige(toFacelets(zustandAn(stelle)));
+    darstellung.zeige(feldernAn(stelle));
     melde();
     return stelle;
   }
@@ -160,6 +201,21 @@ export function erzeugeWiedergabe({ darstellung, warte, pause = () => 0 }) {
   }
 
   /**
+   * Sind zwei Züge für die Hand einer?
+   *
+   * **Nur Grunddrehungen derselben Seite, seit 4T-0100.** Für die
+   * sechsunddreißig erweiterten Züge kennt der Kern keine Zusammenfassung, und
+   * sie hier nachzubauen wäre eine zweite Wahrheit über dieselbe Frage. Ein
+   * erweiterter Zug ist deshalb immer ein Griff für sich, und `mergeSameFace`
+   * bekommt nie einen Zug, den es abweisen müsste.
+   *
+   * Beide Bedingungen stehen an dieser einen Stelle, damit die Vorwärts- und
+   * die Rückwärtsrichtung nicht zwei Fassungen davon führen.
+   */
+  const einGriff = (a, b) =>
+    isFaceMove(a) && isFaceMove(b) && Math.floor(a / 3) === Math.floor(b / 3);
+
+  /**
    * Der Griff, der an einer Stelle beginnt, oder `null` am Ende der Folge.
    *
    * `zug` ist der eine Zug, der alle Züge des Griffs ersetzt, oder `null`,
@@ -168,20 +224,21 @@ export function erzeugeWiedergabe({ darstellung, warte, pause = () => 0 }) {
    */
   function griffAb(n) {
     if (n < 0 || n >= zuege.length) return null;
+    if (!isFaceMove(zuege[n])) return { von: n, anzahl: 1, zug: zuege[n] };
     const grenze = bereichAn(n).bis;
-    const seite = Math.floor(zuege[n] / 3);
     let ende = n + 1;
-    while (ende < grenze && Math.floor(zuege[ende] / 3) === seite) ende++;
+    while (ende < grenze && einGriff(zuege[n], zuege[ende])) ende++;
     return { von: n, anzahl: ende - n, zug: mergeSameFace(zuege.slice(n, ende)) };
   }
 
   /** Der Griff, der an einer Stelle endet, oder `null` am Anfang der Folge. */
   function griffBis(n) {
     if (n <= 0 || n > zuege.length) return null;
+    const letzter = zuege[n - 1];
+    if (!isFaceMove(letzter)) return { von: n - 1, anzahl: 1, zug: letzter };
     const grenze = bereichAn(n - 1).von;
-    const seite = Math.floor(zuege[n - 1] / 3);
     let anfang = n - 1;
-    while (anfang > grenze && Math.floor(zuege[anfang - 1] / 3) === seite) anfang--;
+    while (anfang > grenze && einGriff(letzter, zuege[anfang - 1])) anfang--;
     return { von: anfang, anzahl: n - anfang, zug: mergeSameFace(zuege.slice(anfang, n)) };
   }
 
@@ -206,7 +263,7 @@ export function erzeugeWiedergabe({ darstellung, warte, pause = () => 0 }) {
     if (!griff) return false;
     stelle += griff.anzahl;
     if (griff.zug !== null) {
-      darstellung.spieleZug(griff.zug, toFacelets(zustandAn(stelle)));
+      darstellung.spieleZug(griff.zug, feldernAn(stelle));
     }
     melde();
     return true;
@@ -228,15 +285,35 @@ export function erzeugeWiedergabe({ darstellung, warte, pause = () => 0 }) {
       schritte = [...neueSchritte];
       stelle = 0;
       darstellung.haltAn();
-      darstellung.zeige(toFacelets(ausgang));
+      darstellung.zeige(feldernAn(0));
       melde();
     },
 
     /** Der Zustand, auf dem die Zugfolge aufsetzt. */
     ausgangszustand: () => kopie(ausgang),
 
-    /** Der Zustand an der aktuellen Stelle. Als Kopie. */
+    /**
+     * Der Zustand an der aktuellen Stelle. Als Kopie.
+     *
+     * **Das ist der Modellzustand und nicht der Anblick.** Beide fallen
+     * zusammen, solange die Folge aus Grunddrehungen besteht; eine Folge mit
+     * erweiterten Zügen steht an der Stelle womöglich verdreht, und dieser
+     * Zustand weiß davon nichts.
+     *
+     * Der einzige Aufrufer ist das Beenden einer **Lösung**, die der
+     * Übungswürfel übernimmt, und eine Lösung des Lösers besteht aus
+     * Grunddrehungen. Die Prüfstrecke hält genau das fest, damit die Zusage
+     * nicht bei der nächsten Erweiterung stillschweigend fällt.
+     */
     zustand: () => zustandAn(stelle),
+
+    /**
+     * Die Orientierung an der aktuellen Stelle, für die Prüfung.
+     *
+     * Sie steht hier, weil die Zusage über `zustand` sonst nicht prüfbar wäre:
+     * Ob eine Folge verdreht endet, sieht man dem Zustand nicht an.
+     */
+    orientierung: () => [...standAn(stelle).orientation],
 
     /** Die Zugfolge. Als Kopie, damit sie von außen fest bleibt. */
     zuege: () => [...zuege],
@@ -276,7 +353,12 @@ export function erzeugeWiedergabe({ darstellung, warte, pause = () => 0 }) {
       if (!griff) return false;
       stelle = griff.von;
       if (griff.zug !== null) {
-        darstellung.spieleZug(inverseMove(griff.zug), toFacelets(zustandAn(stelle)));
+        // `inverseExtendedMove` und nicht `inverseMove`: Beide liefern für
+        // alle vierundfünfzig Züge dasselbe, gemessen am 2026-08-24, weil jede
+        // Blockbasis durch drei teilbar ist. Verschieden ist die **Zusage**,
+        // und allein die trägt hier: `inverseMove` sagt nichts über einen Zug
+        // ab achtzehn zu.
+        darstellung.spieleZug(inverseExtendedMove(griff.zug), feldernAn(stelle));
       }
       melde();
       return true;

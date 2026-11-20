@@ -16,9 +16,8 @@ import {
   SEITEN,
   flaechenZahl,
   felderDesSteins,
-  drehungFuerZug,
   cssDrehung,
-  inSchicht,
+  imZug,
   hervorhebung,
   blickrichtungen,
 } from './geometrie.js';
@@ -219,8 +218,9 @@ export function erzeugeWuerfel(dokument) {
     // dabei stehen bliebe, meinte bereits den übernächsten Zug und wanderte
     // mitten in der Drehung auf eine andere Schicht.
     loescheHervorhebung();
-    const { seite } = drehungFuerZug(zug);
-    const betroffene = STEINE.filter((s) => inSchicht(s.stellung, seite)).map((s) =>
+    // Welche Steine mitgehen, sagt der Zug und nicht eine Seite: Eine
+    // Doppelschicht nimmt zwei Schichten mit, eine Ganzdrehung alle drei.
+    const betroffene = STEINE.filter((s) => imZug(s.stellung, zug)).map((s) =>
       steinKnoten.get(s.stellung.join(',')),
     );
 

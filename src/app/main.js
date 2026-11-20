@@ -17,7 +17,19 @@ import { erzeugeEinstellungen } from '../settings/einstellungen.js';
 import { erzeugeWuerfel, DAUERN } from '../view/wuerfel.js';
 import { erzeugeNetz } from '../view/netz.js';
 import { erzeugeWiedergabe } from '../view/wiedergabe.js';
+import { zugInWorten } from '../view/zugtext.js';
 import { erzeugeLektionsbereich, bereichsstand } from '../view/lektion.js';
+import { erzeugeStufenbereich, stufenstand } from '../view/stufe.js';
+import { erzeugeTrainingsbereich, trainingsstand } from '../view/training.js';
+import {
+  erzeugeZeitnahmeBereich,
+  zeitnahmestand,
+  zeitsignal,
+  zeitverlaufstand,
+} from '../view/zeitnahme.js';
+import { erzeugeTon } from '../view/ton.js';
+import { createStopwatch, STOPWATCH_PHASES, TIMING_MODES } from '../timing/stopwatch.js';
+import { createHistory, AVERAGE_WINDOWS } from '../timing/history.js';
 import { zugFuerTaste } from '../input/tasten.js';
 import { erzeugeTastenfeld } from '../input/tastenfeld.js';
 import { solveBeginner, nextStep, SEQUENCES, STEPS } from '../solver/beginner.js';
@@ -27,6 +39,7 @@ import {
   drillFor,
   focusFor,
   helpFor,
+  isLesson,
   lessonFor,
   sequencesFor,
   viewFor,
@@ -34,6 +47,26 @@ import {
   HELP,
   VIEW,
 } from '../lessons/catalog.js';
+import {
+  STAGES,
+  requiredApplications as stufenAnwendungen,
+  anyEditionFilled,
+  editionsOfStage,
+  masteredByCoverage,
+  stageFor,
+  viewsOf,
+} from '../lessons/stages.js';
+import { casesForStage, createStageSetup } from '../lessons/stageSetup.js';
+import {
+  CASES,
+  CASE_TEXTS,
+  EDITIONS,
+  caseFor,
+  caseIdFor,
+  solvedIdFor,
+  textKeyFor,
+} from '../lessons/cases.js';
+import { EXERCISE_MODES, createExercise, judgeExercise, viewSolved } from '../lessons/exercise.js';
 import { UNTERANSICHT } from '../view/blick.js';
 import { ARBEITSECKE, NACH_AUGENZAHL } from '../view/geometrie.js';
 import { createPath } from '../lessons/progress.js';
@@ -231,6 +264,17 @@ function wirke(name) {
     if (wiedergabeLaeuft()) baueZugliste();
     zeigeWiedergabestand();
     zeigeLektion();
+    zeigeCfop();
+    // Und die Zeitnahme, 4T-0147. Sie steht nicht in `zeigeCfop`, denn sie
+    // gehört zu keinem Verfahren; ihre Uhr, ihr Hinweis und der Name ihres
+    // Weges sind Sätze über einen Zustand und tragen deshalb keinen festen
+    // Bezeichner im Dokument.
+    zeigeZeitnahme();
+    // Und der Verlauf, 4T-0153. Er läuft nicht im Takt der Uhr mit und braucht
+    // deshalb seinen eigenen Ruf; sein Bestand bleibt, seine Beschriftung
+    // wechselt, und dazu gehören die Schreibweise des Datums und der
+    // Dezimaltrenner.
+    zeigeZeitverlauf();
     // Dasselbe gilt für die Eingabe: Ihre Zählung und die vorgelesenen
     // Beschriftungen sind Sätze über einen Zustand und tragen deshalb keinen
     // festen Bezeichner. Am 2026-08-18 in der Prüfung am Dokument gefunden;
@@ -252,7 +296,7 @@ function wirke(name) {
     return;
   }
   if (name === 'bewegung') {
-    wuerfel.setzeDauer(DAUERN[wert]);
+    setzeBewegungsdauer();
     return;
   }
   if (name === 'ansicht') {
@@ -270,6 +314,48 @@ function wirke(name) {
     netzHalter.hidden = raeumlich;
     // Der Blick lässt sich nur am Würfel drehen.
     ansichtZurueck.hidden = !raeumlich;
+    // Eine verborgene Ansicht dreht nicht, siehe `bewegungSichtbar`.
+    setzeBewegungsdauer();
+  }
+}
+
+/**
+ * Ist eine Drehung am Würfel gerade zu sehen?
+ *
+ * **Nur dann bekommt die Darstellung eine Dauer**, seit 4T-0212. Bis dahin
+ * drehte der Würfel auch verborgen, in der Netzansicht und während einer
+ * Eingabe, und das Netz wartete auf jede dieser Drehungen, weil es erst nach
+ * ihr wechselt: 280 ms je Zug bei «Mittel», 520 bei «Langsam». Rasch getippte
+ * Züge liefen entsprechend hinterher. Gefunden im Abnahmelauf vom 2026-11-20,
+ * B1.
+ *
+ * **Verworfen: den Würfel verborgen weiterdrehen und nur das Netz vorziehen.**
+ * Das gäbe zwei Takte für denselben Zustand, und wer zurückschaltet, sähe eine
+ * halb abgearbeitete Schlange von Drehungen.
+ */
+function bewegungSichtbar() {
+  return (
+    einstellungen.wert('bewegung') !== 'aus' &&
+    einstellungen.wert('ansicht') === 'raeumlich' &&
+    !eingabeOffen
+  );
+}
+
+/**
+ * Gibt der Darstellung die Dauer, die zur Sichtbarkeit passt.
+ *
+ * Läuft bei jeder Änderung von Bewegung und Ansicht, und die Ansicht wird auch
+ * beim Öffnen und Schließen der Eingabe nachgezogen. Wird die Bewegung dabei
+ * sichtbar, geht die Hervorhebung des letzten Zuges, siehe `zeigeLetztenZug`:
+ * Mit laufender Bewegung meint eine Hervorhebung den **anstehenden** Zug, und
+ * ein stehengebliebener vergangener läse sich als Aufforderung.
+ */
+function setzeBewegungsdauer() {
+  const sichtbar = bewegungSichtbar();
+  wuerfel.setzeDauer(sichtbar ? DAUERN[einstellungen.wert('bewegung')] : 0);
+  if (sichtbar && letzterZug !== null) {
+    letzterZug = null;
+    wuerfel.hebeHervor(stehendeHervorhebung());
   }
 }
 
@@ -332,7 +418,18 @@ dateiFeld.addEventListener('change', async () => {
   // Das Feld wird geleert, damit dieselbe Datei ein zweites Mal ausgewählt
   // werden kann. Ohne das bleibt der Wert stehen und die Änderung bleibt aus.
   dateiFeld.value = '';
-  zeigeHinweis(ergebnis.ok ? 'ablage.geholt' : 'ablage.abgewiesen');
+  // Drei Ausgänge und nicht zwei: Eine Datei aus einer neueren Fassung ist
+  // weder angenommen noch fremd. «Gehört nicht zu diesem Programm» wäre bei
+  // seiner eigenen Sicherung falsch und schickte ihn auf eine Fehlersuche.
+  //
+  // **Der laufende Stand folgt der Datei, seit 4T-0151.** Bis dahin hielten
+  // der Pfad und der Zeitverlauf ihren alten Stand, und das nächste Sichern
+  // schrieb ihn über den geholten. Nachgezogen wird allein bei der angenommenen
+  // Datei; eine abgewiesene hat nichts geändert.
+  if (ergebnis.ok) {
+    folgeDerDatei();
+    zeigeHinweis('ablage.geholt');
+  } else zeigeHinweis(ergebnis.zuNeu ? 'ablage.dateiZuNeu' : 'ablage.abgewiesen');
 });
 
 // --------------------------------------------------------------- Würfel
@@ -380,12 +477,48 @@ wuerfel.zeige(toFacelets(verlauf.zustand()));
  */
 let eingabeOffen = false;
 
+/**
+ * Der zuletzt eigenhändig gedrehte Zug, solange er hervorgehoben steht, oder
+ * `null`.
+ */
+let letzterZug = null;
+
+/** Die zuletzt gezeichnete Arbeitsstelle, `null` für keine, siehe `hebeArbeitsstelleHervor`. */
+let gezeigteArbeitsstelle = null;
+
+/**
+ * Hebt einen eben gedrehten Zug hervor, wenn keine Bewegung ihn gezeigt hat.
+ *
+ * **Seit 4T-0212.** Bei abgeschalteter Bewegung sprang der Würfel bis dahin
+ * stumm in den neuen Zustand, und nichts zeigte, welche Schicht sich gedreht
+ * hatte und wohin. S-0032 verlangt in AK5 genau das; erkennbar war es nur beim
+ * Abspielen einer Lösung, weil die Wiedergabe den anstehenden Zug hervorhebt.
+ * Gefunden im Abnahmelauf vom 2026-11-20, B8, und seit Release 1 so gebaut.
+ *
+ * Genommen wird dieselbe Hervorhebung. Am Würfel zeigt sie Schicht und
+ * Richtung, am Netz allein die Schicht, denn dort zeichnet es bewusst keine
+ * Pfeile, siehe `netz.js`.
+ * **Sie bleibt stehen, bis etwas sie ablöst:** der nächste Zug, ein gesetzter
+ * Zustand, eine Wiedergabe oder eine wieder sichtbare Bewegung. Wer kurz auf
+ * eine Zugtaste zeigt, findet sie danach wieder vor, siehe
+ * `stehendeHervorhebung`.
+ *
+ * Läuft die Bewegung sichtbar, bleibt alles beim Alten: Dann zeigt die Drehung
+ * selbst, was geschah, und eine Hervorhebung danach meinte den nächsten Zug.
+ */
+function zeigeLetztenZug(zug) {
+  if (bewegungSichtbar()) return;
+  letzterZug = zug;
+  wuerfel.hebeHervor(zug);
+}
+
 // Nach jedem Zug am Übungswürfel wird geprüft, ob das Ziel der laufenden
 // Lektion steht. Das Rückwärtsgehen zählt mit: Es ist der Zustand des Würfels,
 // der entscheidet, und nicht der Weg dorthin.
 function spiele(zug) {
   verlauf.fuehreAus(zug);
   wuerfel.spieleZug(zug, toFacelets(verlauf.zustand()));
+  zeigeLetztenZug(zug);
   zeigeVerlaufsstand();
   verwirfHilfe();
   pruefeUebung();
@@ -396,6 +529,7 @@ function nimmZurueck() {
   const gegenzug = verlauf.nimmZurueck();
   if (gegenzug === null) return;
   wuerfel.spieleZug(gegenzug, toFacelets(verlauf.zustand()));
+  zeigeLetztenZug(gegenzug);
   zeigeVerlaufsstand();
   verwirfHilfe();
   pruefeUebung();
@@ -406,6 +540,7 @@ function stelleWieder() {
   const zug = verlauf.stelleWieder();
   if (zug === null) return;
   wuerfel.spieleZug(zug, toFacelets(verlauf.zustand()));
+  zeigeLetztenZug(zug);
   zeigeVerlaufsstand();
   verwirfHilfe();
   pruefeUebung();
@@ -457,6 +592,12 @@ function uebernimmZustand(setzung) {
   if (!befund.ok) return befund;
   wuerfel.haltAn();
   wuerfel.zeige(toFacelets(verlauf.zustand()));
+  // Der zuletzt gedrehte Zug gehört zu einem Würfel, den es nach dem Setzen
+  // nicht mehr gibt, siehe `zeigeLetztenZug`.
+  if (letzterZug !== null) {
+    letzterZug = null;
+    wuerfel.hebeHervor(stehendeHervorhebung());
+  }
   zeigeVerlaufsstand();
   pfad.abort();
   // Die Meldung geht mit der Übung. Am 2026-08-16 im Handtest gefunden: Sie
@@ -464,6 +605,19 @@ function uebernimmZustand(setzung) {
   // eine ganz andere Lage auf dem Tisch lag. Eine Meldung, die einen Zustand
   // behauptet, den es nicht mehr gibt, ist schlimmer als keine.
   rueckmeldung = null;
+  // Dasselbe für den Übergang, seit 4T-0121, und dort kommt die gehaltene
+  // Fallkennung mit: Sie benennt den Fall der aufgelegten Lage, und die liegt
+  // nach dem Setzen nicht mehr. Bliebe sie stehen, zählte der nächste gelöste
+  // Würfel einen Fall, den niemand geübt hat.
+  stufenRueckmeldung = null;
+  stufenaufgabe = null;
+  // Und aus demselben Grund die Übungsaufgabe des Trainings samt ihrem Urteil,
+  // 4T-0139. `pfad.abort()` eine Zeile weiter oben hat die Buchung bereits
+  // beendet; ohne diese beiden Zeilen zeigte der Bereich weiter eine Frage zu
+  // einer Lage, die nicht mehr liegt, und nähme eine Antwort darauf entgegen.
+  trainingsaufgabe = null;
+  trainingsurteil = null;
+  trainingsWiederholung = null;
   // Aus demselben Grund geht auch die Auskunft der Hilfe. Sie nennt den
   // nächsten Schritt für eine Lage, die es nach dem Setzen nicht mehr gibt.
   hilfe = null;
@@ -478,7 +632,13 @@ function uebernimmZustand(setzung) {
   // hier und nicht an den fünf Stellen, die setzen; die Anzeige entscheidet
   // selbst über ihre Gültigkeit, siehe `zeigeVerwuerfelung`.
   zeigeVerwuerfelung();
+  // Und aus demselben Grund ein Durchgang der Zeitnahme, 4T-0147 — **aber
+  // allein der über den Bildschirm**. Am eigenen Würfel beschreibt der
+  // Übungswürfel den Versuch nicht, und die Entscheidung dazu steht bei
+  // `raeumeZeitnahmeAb`.
+  raeumeZeitnahmeAb();
   zeigeLektion();
+  zeigeCfop();
   return befund;
 }
 
@@ -503,7 +663,7 @@ ansichtZurueck.disabled = wuerfel.istAusgangsansicht();
 // und nicht einfach auf nichts; sonst löschte ein Streifen über das Tastenfeld
 // den anstehenden Zug.
 const tastenfeld = erzeugeTastenfeld(document, spiele, (zug) =>
-  wuerfel.hebeHervor(zug ?? hervorhebungDerWiedergabe()),
+  wuerfel.hebeHervor(zug ?? stehendeHervorhebung()),
 );
 document.getElementById('tastenfeld-halter').append(tastenfeld.knoten);
 
@@ -629,15 +789,32 @@ function zeigeVerwuerfelung() {
   verwuerfelungZuege.textContent = gilt ? formatMoves(verwuerfelung.zuege) : '';
 }
 
-document.getElementById('verlauf-verwuerfeln').addEventListener('click', () => {
+/**
+ * Verwürfelt den Übungswürfel und zeigt die Folge an.
+ *
+ * **Eine Stelle für beide Aufrufer**, seit 4T-0147: die Schaltfläche in der
+ * Bedienung und die Wahl des Weges in der Zeitnahme. Zwei Stellen wären zwei
+ * Wahrheiten darüber, was eine Verwürfelung ist und was danach angezeigt wird,
+ * und die zweite liefe der ersten davon.
+ *
+ * Liefert, ob wirklich gesetzt wurde. Der Befund zählt: Eine abgelehnte
+ * Rückfrage lässt den Würfel stehen, und wer daraufhin einen Durchgang eröffnete,
+ * begänne ihn auf einer Lage, die niemand hergestellt hat.
+ */
+function verwuerfele() {
   // Die Verwürfelung kommt aus dem Kern und hält dessen zwei Regeln ein.
   const zuege = scramble();
   const neu = applyMoves(solvedCube(), zuege);
   // Erst setzen, dann festhalten. Andersherum verlöre eine abgelehnte
   // Rückfrage die Folge, die bis dahin galt.
-  if (!setzeMitRueckfrage(neu)) return;
+  if (!setzeMitRueckfrage(neu)) return false;
   verwuerfelung = { zuege, felder: toFacelets(neu).join('') };
   zeigeVerwuerfelung();
+  return true;
+}
+
+document.getElementById('verlauf-verwuerfeln').addEventListener('click', () => {
+  verwuerfele();
 });
 
 // Zurücknehmen und Wiederherstellen auch über die Tastatur, mit den
@@ -661,6 +838,12 @@ document.addEventListener('keydown', (ereignis) => {
     if (taste === 'z' && !ereignis.shiftKey) nimmSetzungZurueck();
     return;
   }
+  // **Während einer Wiedergabe gilt dasselbe wie für das Tastenfeld**, seit
+  // 4T-0212: Der Übungswürfel ist gesperrt. Bis dahin drehte Strg+Z ihn unter
+  // der laufenden Wiedergabe zurück und machte die abgespielte Folge ungültig;
+  // die Schaltflächen dafür waren gesperrt, die Tastatur nicht. Gefunden von
+  // der unabhängigen Prüfung am 2026-11-20, seit Release 1 so.
+  if (wiedergabeLaeuft()) return;
   if (taste === 'y' || ereignis.shiftKey) stelleWieder();
   else nimmZurueck();
 });
@@ -677,8 +860,12 @@ const wiedergabe = erzeugeWiedergabe({
   // Bei abgeschalteter Bewegung ruht die Darstellung sofort, und ohne Takt
   // liefen hundertfünfzig Züge in einem Wimpernschlag durch. «Aus» bedeutet
   // keine Bewegung, nicht keine Zeit; deshalb gilt dann die mittlere Stufe.
-  // Läuft eine Bewegung, ist sie selbst der Takt.
-  pause: () => (einstellungen.wert('bewegung') === 'aus' ? DAUERN.mittel : 0),
+  // Läuft eine Bewegung sichtbar, ist sie selbst der Takt.
+  //
+  // **Ist sie verborgen, gilt ihre eingestellte Dauer als Pause**, seit
+  // 4T-0212: In der Netzansicht dreht der Würfel nicht mehr, siehe
+  // `bewegungSichtbar`, und das Abspielen behält trotzdem das gewählte Tempo.
+  pause: () => (bewegungSichtbar() ? 0 : DAUERN[einstellungen.wert('bewegung')] || DAUERN.mittel),
 });
 
 /**
@@ -772,17 +959,13 @@ const zuglisteFelder = new Map();
 /**
  * Der Zug in Worten, etwa «rechte Seite, gegen den Uhrzeigersinn».
  *
- * Der Zug-Index zählt Seitenindex mal drei plus Anzahl der Vierteldrehungen
- * minus eins, wie im Kern. Eine, zwei und drei Vierteldrehungen sind damit
- * Uhrzeigersinn, halbe Umdrehung und Gegenrichtung.
+ * **Die Rechnung steht seit 4T-0100 in `view/zugtext.js`** und nicht mehr
+ * hier. Für die sechsunddreißig erweiterten Züge wird die Bezugsfläche aus der
+ * Zugbeschreibung des Kerns gerechnet, und diese Rechnung gehört geprüft;
+ * hinter einem `document` wäre sie ohne Browser nicht erreichbar. Hier bleibt
+ * allein die Sprache, die gerade gilt.
  */
-function klartext(zug) {
-  const arten = ['uhr', 'halb', 'gegen'];
-  return text('anstehend.klartext', {
-    seite: text(`seite.${FACES[Math.floor(zug / 3)]}`),
-    richtung: text(`richtung.${arten[zug % 3]}`),
-  });
-}
+const klartext = (zug) => zugInWorten(zug, text);
 
 /** Wo eine Stelle innerhalb eines Bereichs liegt. Für die beiden Kennzeichnungen. */
 const lage = (n, von, anzahl) => {
@@ -1031,7 +1214,11 @@ function zeigeWiedergabestand() {
   // die Darstellung: Läuft noch eine Bewegung, gehört sie zu einem Zug, der
   // schon zwei Drehungen weiter liegt. Hervorgehoben wird die Schicht des
   // Griffs; hebt er sich auf, gibt es nichts hervorzuheben.
-  wuerfel.hebeHervor(hervorhebungDerWiedergabe());
+  //
+  // Eine geladene Wiedergabe löst den zuletzt eigenhändig gedrehten Zug ab,
+  // siehe `zeigeLetztenZug`; ihre Hervorhebung meint den anstehenden.
+  if (wiedergabeLaeuft()) letzterZug = null;
+  wuerfel.hebeHervor(stehendeHervorhebung());
   zeigeAnstehendes();
 }
 
@@ -1041,9 +1228,21 @@ function zeigeWiedergabestand() {
  * Eigens benannt seit 4T-0065, weil es dafür jetzt zwei Aufrufer gibt: den
  * Takt der Wiedergabe und das Verlassen einer Zugtaste. Zweimal geschrieben
  * liefe die eine Fassung der anderen davon.
+ *
+ * **Ohne Wiedergabe ist es der zuletzt gedrehte Zug**, seit 4T-0212, solange
+ * er stehen soll, und sonst `null`. Sonst löschte ein Streifen über das
+ * Tastenfeld die Hervorhebung, die `zeigeLetztenZug` eben gesetzt hat. Bis
+ * dahin hieß die Funktion `hervorhebungDerWiedergabe`.
+ *
+ * **Während einer Eingabe ist es immer `null`.** Das Netz zeigt dann die
+ * Eingabe, und ein Saum aus dem letzten Zug läge auf Feldchen, mit denen er
+ * nichts zu tun hat. Gefunden von der unabhängigen Prüfung am 2026-11-20. Beim
+ * Abbrechen kehrt er mit `zeigeWiedergabestand` zurück, beim Übernehmen geht
+ * er mit dem gesetzten Zustand.
  */
-function hervorhebungDerWiedergabe() {
-  return wiedergabeLaeuft() ? (wiedergabe.naechsterGriff()?.zug ?? null) : null;
+function stehendeHervorhebung() {
+  if (eingabeOffen) return null;
+  return wiedergabeLaeuft() ? (wiedergabe.naechsterGriff()?.zug ?? null) : letzterZug;
 }
 
 wiedergabe.aufAenderung(zeigeWiedergabestand);
@@ -1365,6 +1564,10 @@ let hilfeLaeuft = false;
 let rueckweg = null;
 
 const lektionHalter = document.getElementById('lektion-halter');
+// Der äußere Aufklapper des Bereichs, 4T-0130. Er steht in `index.html` und
+// kommt ohne Programm aus; angefasst wird er an genau einer Stelle, in
+// `springeZurLektion`, und die Begründung steht dort.
+const lernpfadKlappe = document.getElementById('lernpfad-klappe');
 const lektionsbereich = erzeugeLektionsbereich(document, {
   waehle: waehleLektion,
   fuehreVor: fuehreFolgeVor,
@@ -1374,23 +1577,596 @@ const lektionsbereich = erzeugeLektionsbereich(document, {
   ueberspringe: ueberspringeLektion,
   hilf: holeHilfe,
   kehreZurueck: kehreZurLoesungZurueck,
+  steigeEin: steigeInLektionEin,
 });
 lektionHalter.append(lektionsbereich.knoten);
 
-/** Setzt die gehaltene Meldung in die Werte der laufenden Sprache um. */
-function rueckmeldungFuerAnzeige() {
-  if (rueckmeldung === null) return null;
-  const werte = { ...(rueckmeldung.werte ?? {}) };
-  if (rueckmeldung.lektion) {
-    werte.nummer = lessonFor(rueckmeldung.lektion).number;
-    werte.name = text(`lektion.${rueckmeldung.lektion}.titel`);
+// --------------------------------- Der Übergang zum Verfahren CFOP, 4T-0121
+//
+// **Ein zweiter Bereich neben dem Lernpfad und kein Umschalter in ihm.**
+// Entschieden am 2026-08-27, und die Grundlage ist gemessen: Alle zehn
+// Funktionen, die oben `laufendeLektion` anfassen, brauchen Lektionswissen,
+// unmittelbar oder über eine Kette. Ein Umschalter hätte jede von ihnen
+// verzweigen lassen.
+//
+// Was hier steht, ist deshalb ein zweiter Satz derselben Wege und keine
+// Erweiterung der ersten. Geteilt werden allein die Vorführung, die für beide
+// dieselbe ist, und die Auflösung der Rückmeldungen.
+
+/**
+ * Die angezeigte Stufe des Übergangs.
+ *
+ * Aus `stageResume` und nicht aus `resume`: Jede der beiden Auskünfte antwortet
+ * nur über ihren eigenen Bestand, seit 4T-0127. Ein gemeinsames `resume` gäbe
+ * dem Lektionsbereich eine Stufe, deren Bezeichner sein Bestand nicht kennt.
+ */
+let laufendeStufe = pfad.stageResume().key;
+
+/**
+ * Die aufgelegte Übungsaufgabe als `{ kennung, blick }`, oder `null`.
+ *
+ * **Die Kennung ist der einzige Weg, nach dem Lösen noch zu wissen, welcher
+ * Fall gelungen ist.** Der gelöste Würfel verrät es nicht mehr, und `caseFor`
+ * nennt dann folgerichtig die Lage, an der nichts mehr zu tun ist. Gehalten
+ * wird beides wie `rueckweg` und verfällt mit jedem Setzen von außen, denn dann
+ * liegt die Lage nicht mehr, für die es galt.
+ *
+ * **Der Blick gehört dazu, und das ist am 2026-08-27 in der Prüfung von Hand
+ * aufgefallen.** Eine Stufe hat bis zu zwei Blicke, und wer den Fall des ersten
+ * löst, hat das Ziel der **Stufe** noch nicht erreicht: Nach dem Kippen der
+ * Kanten stehen die Ecken weiterhin gedreht. Gemessen wird deshalb am Blick des
+ * Falls und nicht am Ziel der Stufe.
+ *
+ * `null` heißt zweierlei und beides ist richtig: Es läuft keine Übung, oder die
+ * Stufe hat keine Fallmenge und misst Anwendungen.
+ */
+let stufenaufgabe = null;
+
+/** Die Rückmeldung des Übergangs, getrennt von der des Lernpfads. */
+let stufenRueckmeldung = null;
+
+/** Der Fall hinter einer Kennung, für die Namen der Deckungsliste. */
+const FALL_JE_KENNUNG = new Map(CASES.map((fall) => [`${fall.view}/${fall.id}`, fall]));
+
+const stufenbereich = erzeugeStufenbereich(document, {
+  waehle: waehleStufe,
+  // Dieselbe Wiedergabe wie beim Lernpfad. Ein zweiter Abspielweg wäre ein
+  // zweiter Ort für dieselbe Sache; der Bereich meldet nur den Wunsch an.
+  fuehreVor: fuehreNotationVor,
+  beginneUebung: beginneStufenuebung,
+  ueberspringe: ueberspringeStufe,
+  waehleFassung: waehleStufenfassung,
+  steigeEin: steigeInStufeEin,
+});
+document.getElementById('stufe-halter').append(stufenbereich.knoten);
+
+// ------------------------------- Das Training von Erkennung und Ausführung, 4T-0138
+//
+// **Der zweite Bereich desselben Verfahrens**, und er teilt mit dem Übergang
+// seine Quelle: Beide lesen `pfad.stageOverview()`. Seit 4T-0139 teilt er auch
+// die Tätigkeit, und seit 4T-0141 in beiden Übungsformen: Die Erkennung fragt
+// nach dem Fall, die Ausführung nach der Zugfolge.
+//
+// **Der Unterschied zwischen beiden ist die Antwort und sonst nichts.** Bei der
+// Erkennung ist sie eine Fallkennung und kommt aus einer Schaltfläche, bei der
+// Ausführung ist sie die Lage des Übungswürfels und kommt aus den Zügen.
+// Aufgabe, Buchung und Anzeige gehen für beide denselben Weg; `exercise.js`
+// hält es in seinem Kopf ebenso.
+
+/**
+ * Die im Training gewählte Stufe und Übungsform.
+ *
+ * **Beide werden nicht abgelegt**, entschieden vom Product Owner am
+ * 2026-08-31. Der Datensatz steht seit 4T-0134 auf Fassung 4, und eine fünfte
+ * für zwei Werte, die ein Klick wiederherstellt, wäre ein hoher Preis;
+ * dieselbe Zurückhaltung übt der Bereich «Bedienung» seit 4T-0060 mit seinem
+ * Aufklapper.
+ *
+ * **`null` ist die Vorgabe und kein fehlender Wert.** `trainingsstand` fällt
+ * dann auf die erste erreichbare Stufe und die erste Übungsform zurück, und
+ * die erste Form ist die Erkennung: Sie ist beim schnellen Lösen der Engpass,
+ * und darum steht 3E-0045 vor 3E-0046.
+ */
+let trainingsstufe = null;
+let trainingsform = null;
+
+/**
+ * Die laufende Übungsaufgabe des Trainings und das letzte Urteil, 4T-0139.
+ *
+ * `trainingsaufgabe` ist, was `createExercise` geliefert hat, also
+ * `{ mode, key, kennung, view, state }`, und trägt damit die **gesuchte
+ * Antwort**. Sie bleibt deshalb hier und geht nicht in den gerechneten Stand
+ * des Bereichs; die Begründung steht im Kopf von `view/training.js`.
+ *
+ * `trainingsurteil` hält fest, wie die letzte Antwort ausfiel, als
+ * `{ richtig, bezeichner, name, merkmale }` mit dem Bezeichner des Fallnamens
+ * und, seit 4T-0141, dem des Wortlauts. **Erst hier darf die Lösung in die
+ * Anzeige**, denn dann wird sie ohnehin gesagt.
+ *
+ * Beide werden in `uebernimmZustand` geräumt, neben `stufenaufgabe` und aus
+ * demselben Grund: Eine Aufgabe zu einer Lage, die nicht mehr liegt, ist keine.
+ */
+let trainingsaufgabe = null;
+let trainingsurteil = null;
+
+/**
+ * Die Aufgabe des letzten Fehlversuchs, für die Wiederholung, 4T-0142.
+ *
+ * **Sie steht neben dem Urteil und nicht in ihm.** Was im Urteil steht, geht an
+ * den Trainingsbereich und damit ins Dokument; die Lage einer Aufgabe hat dort
+ * nichts zu suchen. Der Bereich bekommt aus dem Urteil die Auskunft, also
+ * Zugfolge und Ausrichtungshinweis, und diese Stelle behält, was die
+ * Wiederholung braucht.
+ *
+ * Geräumt wird sie mit den beiden darüber und aus demselben Grund.
+ */
+let trainingsWiederholung = null;
+
+/** Die Übungsformen in der Reihenfolge der Anzeige, Erkennung zuerst. */
+const UEBUNGSFORMEN = [EXERCISE_MODES.RECOGNITION, EXERCISE_MODES.EXECUTION];
+
+const trainingsbereich = erzeugeTrainingsbereich(document, {
+  waehleStufe: (kennung) => {
+    trainingsstufe = kennung;
+    // Die Aufgabe gehört zur alten Wahl und endet mit ihr. **Dass dabei keine
+    // Übung des Übergangs mitfällt, folgt aus dem Bestand:** Der Beginn einer
+    // Trainingsaufgabe setzt den Würfel, und das hat eine laufende
+    // Stufenübung ohnehin schon beendet.
+    beendeTrainingsaufgabe();
+    zeigeCfop();
+  },
+  waehleForm: (kennung) => {
+    trainingsform = kennung;
+    beendeTrainingsaufgabe();
+    zeigeCfop();
+  },
+  stelleAufgabe: () => beginneTrainingsaufgabe(),
+  antworte: (kennung) => beantworteTrainingsaufgabe(kennung),
+  gibAuf: () => gibTrainingsaufgabeAuf(),
+  wiederhole: () => wiederholeTrainingsaufgabe(),
+  setzeZurueck: () => setzeMesswerteZurueck(),
+});
+document.getElementById('training-halter').append(trainingsbereich.knoten);
+
+// ------------------------------------------- Die Zeitnahme, aus 4T-0147
+
+/**
+ * Der Ablauf der Zeitnahme, mit beiden Uhren von hier.
+ *
+ * **`jetzt` läuft monoton und trägt die Dauer.** Die Kalenderzeit taugt dafür
+ * nicht: Sie folgt der Systemzeit, und eine Korrektur über das Netz oder die
+ * Umstellung auf Winterzeit verschöbe sie mitten im Versuch.
+ *
+ * **`zeitpunkt` benennt, wann der Versuch war**, sekundengenau nach ISO 8601 in
+ * UTC gemäß Abschnitt H der globalen Projektstandards. Die Millisekunden fallen
+ * weg, weil sie an einem Kalenderzeitpunkt nichts aussagen; die Dauer misst die
+ * andere Uhr.
+ *
+ * **Beide stehen hier und nicht im Modul.** `src/timing` steht seit 4T-0146 im
+ * strengen Block der ESLint-Konfiguration und liest keinen globalen Namen; eine
+ * Rechnung, die selbst auf die Uhr sieht, ließe sich nicht in Millisekunden
+ * prüfen, sondern nur in Wartezeit.
+ */
+const stoppuhr = createStopwatch({
+  jetzt: () => performance.now(),
+  zeitpunkt: () => `${new Date().toISOString().slice(0, 19)}Z`,
+});
+
+/**
+ * Die beiden Wege, wie der Bereich sie braucht.
+ *
+ * **Er bekommt die eine Frage mit, die sie trennt**, und nicht die Kennungen
+ * zum Vergleichen: Ob der Anwender selbst beendet, entscheidet, ob «Fertig»
+ * dasteht. Damit steht die Verzweigung nach dem Weg auch in der Oberfläche nur
+ * einmal, wie im Ablauf.
+ */
+const ZEITWEGE = [
+  { kennung: TIMING_MODES.SCREEN, beendetSelbst: false },
+  { kennung: TIMING_MODES.OWN_CUBE, beendetSelbst: true },
+];
+
+/**
+ * Die Inspektionsdauer je Katalogwert, in Millisekunden.
+ *
+ * **Die Zuordnung steht hier und nicht im Katalog**, seit 4T-0148. Eine
+ * Einstellung trägt einen Katalogwert und keine Zahl, denn nur über eine feste
+ * Werteliste fällt ein fremder Wert aus dem Browserspeicher auf die Vorgabe
+ * zurück; welche Dauer daraus wird, ist eine Frage der Verdrahtung, wie die
+ * beiden Uhren darüber.
+ *
+ * **Die Null ist kein Sonderfall.** Der Ablauf führt sie auf denselben Weg wie
+ * jede andere Dauer: Der Messbeginn ist dann der Beginn des Versuchs, und die
+ * Inspektionsphase hat keine Ausdehnung.
+ */
+const ZEIT_INSPEKTION = { aus: 0, s15: 15_000, s30: 30_000 };
+
+/** Der gewählte Weg vor dem Start, oder `null`. */
+let zeitnahmeVorbereitet = null;
+
+/**
+ * Das Ergebnis des letzten Durchgangs, oder `null`.
+ *
+ * **Es liegt hier und nicht im Ablauf**, der es abliefert und nicht behält.
+ * Gehalten wird es, damit die Anzeige es nach dem Abräumen des Ablaufs noch
+ * zeigen kann. **Abgelegt wird es daneben im Zeitverlauf**, seit 4T-0150; die
+ * Anzeige liest weiterhin diese eine Größe und nicht den Bestand.
+ */
+let zeitergebnis = null;
+
+/**
+ * Der Zeitverlauf, neben dem Pfad und gleich gebaut, aus 4T-0150.
+ *
+ * Er bekommt das dritte Feld des Datensatzes hereingereicht und kennt die
+ * Einstellungen nicht. **Neben dem Fortschritt und nicht darin**, denn der
+ * Pfad schreibt allein, was er kennt, und ein fremdes Feld dort wäre beim
+ * nächsten Beginn einer Lektion verloren.
+ */
+const zeitverlauf = createHistory({
+  load: () => einstellungen.zeiten(),
+  save: (wert) => einstellungen.setzeZeiten(wert),
+});
+
+/** Läuft der Takt der Anzeige gerade? */
+let zeittaktLaeuft = false;
+
+/**
+ * Der zuletzt gezeigte Schritt, für die Flanke des Tonsignals.
+ *
+ * **Die Flanke entsteht im Takt der Anzeige und nicht in einem Weckruf.** Ein
+ * `setTimeout` auf das Ende der Frist wäre eine zweite Uhr neben der, die
+ * ohnehin gefragt wird; `timing/stopwatch.js` begründet im Kopf, warum es die
+ * nicht gibt. **Der Preis ist benannt und nicht behoben:** In einem verborgenen
+ * Reiter feuert der Takt nicht, und das Signal kommt erst beim Zurückkommen.
+ */
+let zeitschrittVorher = null;
+
+/**
+ * Die Tonausgabe, aus 4T-0149.
+ *
+ * **Der Klangkontext entsteht erst beim ersten Signal**, und deshalb wird hier
+ * ein Bauer hereingereicht und kein Kontext. Ein vor der ersten Nutzergeste
+ * angelegter wird vom Browser abgewiesen oder angehalten; beide Signale folgen
+ * ohnehin auf einen Griff. **Fehlt die Klangschnittstelle**, liefert der Bauer
+ * `null`, und das Programm bleibt still statt zu scheitern.
+ */
+const ton = erzeugeTon({
+  baueKontext: () => (window.AudioContext ? new window.AudioContext() : null),
+});
+
+const zeitnahmeBereich = erzeugeZeitnahmeBereich(document, {
+  waehle: (kennung) => eroeffneZeitnahme(kennung),
+  starte: () => starteZeitnahme(),
+  jetzt: () => beendeInspektion(),
+  beende: () => beendeZeitnahme(),
+  brich: () => brichZeitnahmeAb(),
+  verwirf: (weg, stelle) => verwirfZeit(weg, stelle),
+  loesche: () => loescheZeiten(),
+});
+document.getElementById('zeitnahme-halter').append(zeitnahmeBereich.knoten);
+
+/** Läuft gerade eine Messung oder eine Inspektion? */
+function zeitLaeuft() {
+  const phase = stoppuhr.status().phase;
+  return phase === STOPWATCH_PHASES.RUNNING || phase === STOPWATCH_PHASES.INSPECTION;
+}
+
+/**
+ * Nimmt das Ergebnis eines beendeten Durchgangs entgegen: ablegen und halten.
+ *
+ * **Die eine Stelle für beide Wege.** Ein Ergebnis entsteht am eigenen Würfel
+ * durch «Fertig» und am Bildschirm durch den gelösten Würfel, und beide Wege
+ * führen hierher; zwei Stellen, die ablegen, liefen einander davon. Der Ablauf
+ * liefert das Ergebnis in der Gestalt, die der Verlauf nimmt, und der Bereich
+ * bekommt seine eigene.
+ */
+function nimmZeitergebnis() {
+  const ergebnis = stoppuhr.result();
+  if (ergebnis === null) return;
+  zeitverlauf.record(ergebnis);
+  zeitergebnis = { weg: ergebnis.mode, dauer: ergebnis.duration };
+  // Der Verlauf hat einen Versuch mehr, 4T-0153. **Hier und nicht in
+  // `zeigeZeitnahme`**, denn das läuft im Takt des Zeichnens; der Grund steht
+  // bei `zeigeZeitverlauf`.
+  zeigeZeitverlauf();
+}
+
+/**
+ * Die Auskunft des Zeitverlaufs, wie die Anzeige sie liest, aus 4T-0153.
+ *
+ * **Je Weg alles, was der Bereich braucht**, und die Fenster kommen als Daten
+ * mit: `AVERAGE_WINDOWS` sagt, welche Durchschnitte es gibt, und ein drittes
+ * Fenster wäre damit eine Zahl in einer Liste und keine Änderung an zwei
+ * Modulen.
+ *
+ * **Für jeden Weg und nicht für einen gewählten.** Beide stehen nebeneinander,
+ * und das ist AK6 von S-0029: Wer sie einzeln holte, müsste hier entscheiden,
+ * welcher gilt, und die Anzeige zeigte einen Vergleich, den es nicht geben
+ * darf.
+ */
+function zeitverlaufsauskunft() {
+  return ZEITWEGE.map(({ kennung }) => ({
+    kennung,
+    versuche: zeitverlauf.entries(kennung),
+    bestzeit: zeitverlauf.best(kennung),
+    schnitte: AVERAGE_WINDOWS.map((fenster) => ({
+      fenster,
+      ms: zeitverlauf.averageOf(kennung, fenster),
+    })),
+  }));
+}
+
+/**
+ * Zeichnet den Verlauf, aus 4T-0153.
+ *
+ * **Eine eigene Stelle neben `zeigeZeitnahme` und nicht darin.** Jene läuft
+ * während einer Messung im Takt des Zeichnens, also etwa sechzigmal in der
+ * Sekunde. Der Verlauf ändert sich dagegen nur an drei Anlässen: ein Versuch
+ * kommt hinzu, einer fällt weg, oder der ganze Bestand wird aus einer Datei
+ * ersetzt. Ihn mitzuziehen wäre sechzigmal in der Sekunde dieselbe Liste, und
+ * das ist eine Last ohne Gegenstand, wie ein Takt, der immer liefe.
+ *
+ * **Der Sprachwechsel ist der vierte Anlass**, und er ändert den Bestand nicht,
+ * sondern seine Beschriftung; er ruft diese Stelle deshalb eigens, wie er
+ * `zeigeZeitnahme` eigens ruft.
+ */
+function zeigeZeitverlauf() {
+  zeitnahmeBereich.zeigeVerlauf({ verlauf: zeitverlaufsanzeige(), text });
+}
+
+/**
+ * Der gerechnete Stand des Verlaufs, für Anzeige und Griffe.
+ *
+ * **Eine Stelle für die Rechnung**, wie `trainingsanzeige` im Trainingsbereich:
+ * Das Löschen fragt vor der Rückfrage, ob es überhaupt etwas zu löschen gibt,
+ * und liest dafür denselben Stand, den die Anzeige zeigt. Zwei Stellen liefen
+ * einander früher oder später davon.
+ */
+function zeitverlaufsanzeige() {
+  return zeitverlaufstand({ wege: ZEITWEGE, verlauf: zeitverlaufsauskunft() });
+}
+
+/**
+ * Verwirft einen einzelnen Versuch, aus 4T-0154.
+ *
+ * **Ohne Rückfrage**, entschieden vom Product Owner am 2026-09-03: AK6 von
+ * S-0049 verlangt die Ankündigung ausdrücklich für den ganzen Verlauf und AK5
+ * für den einzelnen Versuch nicht. Ein Versuch ist ein Wert, sein Verlust ist
+ * an der Liste unmittelbar zu sehen, und die nächste Messung stellt ihn wieder
+ * her; wer drei Ausreißer aufräumt, müsste sonst dreimal bestätigen, und eine
+ * Rückfrage, die man reflexhaft wegklickt, schützt nichts mehr.
+ *
+ * **Der Verlauf entscheidet, ob der Griff greift**, und nicht diese Stelle:
+ * `discard` liefert für eine Stelle, die es nicht gibt, `false` und fasst den
+ * Speicher nicht an. Gezeichnet wird nur, wenn wirklich einer gefallen ist.
+ */
+function verwirfZeit(weg, stelle) {
+  if (!zeitverlauf.discard(weg, stelle)) return;
+  zeigeZeitverlauf();
+}
+
+/**
+ * Löscht den ganzen Verlauf, beide Wege, aus 4T-0154.
+ *
+ * **Mit Rückfrage, und sie nennt ihren Gegenstand beim Namen**, wie
+ * `loescheFortschritt` und `setzeMesswerteZurueck`. Was hier verloren geht, ist
+ * nicht in einem Zug wiederherzustellen, und die Ankündigung sagt auch, was
+ * bleibt: der Lernfortschritt hängt nicht an den Zeiten.
+ *
+ * **Die erste Zeile prüft den Bestand und nicht das Bild.** Die Schaltfläche
+ * ist gesperrt, solange kein Versuch abgelegt ist; diese Zeile ist der Schutz
+ * gegen einen Bestand, der sich unter der Anzeige geändert hat. Dieselbe
+ * Vorsicht übt `setzeMesswerteZurueck`.
+ */
+function loescheZeiten() {
+  if (!zeitverlaufsanzeige().gebucht) return;
+  if (!window.confirm(text('zeitnahme.verlaufLoeschenWirklich'))) return;
+  zeitverlauf.clear();
+  zeigeZeitverlauf();
+}
+
+/**
+ * Meldet den Wechsel des Schrittes an die Tonausgabe.
+ *
+ * **Die Einstellung wird hier gefragt und nicht im Ton**, wie die Dauer der
+ * Inspektionszeit beim Start: Das Modul erzeugt Klänge und liest keine
+ * Einstellung. Der Schritt wird in jedem Fall fortgeschrieben, auch bei
+ * abgeschaltetem Ton; sonst hinge die Flanke davon ab, wann zuletzt geklungen
+ * hat, und das erste Signal nach dem Einschalten käme an der falschen Stelle.
+ */
+function meldeZeitschritt(schritt, weg) {
+  const signal = zeitsignal({ vorher: zeitschrittVorher, jetzt: schritt, weg, wege: ZEITWEGE });
+  zeitschrittVorher = schritt;
+  if (signal !== null && einstellungen.wert('ton') === 'an') ton.spiele(signal);
+}
+
+function zeigeZeitnahme() {
+  const lage = stoppuhr.status();
+  const stand = zeitnahmestand({
+    wege: ZEITWEGE,
+    // Der Weg des laufenden Durchgangs, sonst der vorgemerkte. Beide zugleich
+    // gibt es nicht: Der Start räumt die Vormerkung ab.
+    weg: lage.mode ?? zeitnahmeVorbereitet,
+    vorbereitet: zeitnahmeVorbereitet !== null,
+    // **Die beiden Phasen getrennt und nicht als ein «läuft»**, seit
+    // 4T-0148. Der Bereich zeigt in der Inspektion die verbleibende Frist und
+    // in der Messung die verstrichene Zeit; welche von beiden gilt, weiß der
+    // Ablauf und nicht die Anzeige.
+    inspiziert: lage.phase === STOPWATCH_PHASES.INSPECTION,
+    laeuft: lage.phase === STOPWATCH_PHASES.RUNNING,
+    dauer: lage.duration,
+    verbleibend: lage.remaining,
+    ergebnis: zeitergebnis,
+  });
+  // **Erst melden, dann zeigen.** Der Ton begleitet den Wechsel, und ein
+  // Klang, der auf das Zeichnen wartet, käme später als das Bild, das er
+  // begleiten soll.
+  meldeZeitschritt(stand.schritt, stand.weg);
+  zeitnahmeBereich.zeige({ stand, text });
+}
+
+/**
+ * Eröffnet einen Durchgang: Weg merken, verwürfeln, bereitstellen.
+ *
+ * **Der vorige Durchgang wird zuerst abgeräumt.** `begin` weist einen zweiten
+ * Beginn ab, solange der erste steht, und nach einem beendeten steht er noch;
+ * ohne das Abräumen liefe der nächste Start ins Leere.
+ *
+ * **Die Vormerkung entsteht nach dem Setzen und nicht davor**, wie die Anzeige
+ * der Verwürfelung seit 4T-0083. Eine abgelehnte Rückfrage ließe den Bereich
+ * sonst bereitstehen für eine Lage, die es nicht gibt.
+ */
+function eroeffneZeitnahme(kennung) {
+  stoppuhr.abort();
+  zeitnahmeVorbereitet = null;
+  zeitergebnis = null;
+  if (verwuerfele()) zeitnahmeVorbereitet = kennung;
+  zeigeZeitnahme();
+}
+
+/**
+ * Startet den vorbereiteten Durchgang, also die Inspektionszeit oder, wenn sie
+ * abgeschaltet ist, unmittelbar die Messung.
+ *
+ * **Die Dauer wird hier gelesen und nicht festgehalten**, seit 4T-0148: Wer die
+ * Einstellung zwischen zwei Durchgängen ändert, meint den nächsten. Einen
+ * laufenden nachträglich zu verlängern wäre eine Frist, die sich beim Ansehen
+ * ändert.
+ */
+function starteZeitnahme() {
+  if (zeitnahmeVorbereitet === null) return;
+  const dauer = ZEIT_INSPEKTION[einstellungen.wert('inspektion')];
+  if (!stoppuhr.begin({ mode: zeitnahmeVorbereitet, inspection: dauer })) return;
+  zeitnahmeVorbereitet = null;
+  zeigeZeitnahme();
+  taktZeitnahme();
+}
+
+/**
+ * Beendet die Inspektionszeit vorzeitig und beginnt die Messung.
+ *
+ * **Der Ablauf entscheidet, ob der Griff greift**, und nicht diese Stelle:
+ * `start` liefert außerhalb der Inspektion `false`. Der Takt läuft weiter, denn
+ * er hängt an derselben Frage wie die Anzeige und nicht an der Phase.
+ */
+function beendeInspektion() {
+  if (!stoppuhr.start()) return;
+  zeigeZeitnahme();
+}
+
+/** Beendet den Durchgang von Hand, also am eigenen Würfel. */
+function beendeZeitnahme() {
+  if (!stoppuhr.finish()) return;
+  nimmZeitergebnis();
+  zeigeZeitnahme();
+}
+
+/** Bricht den Durchgang ab; ein Abbruch liefert kein Ergebnis. */
+function brichZeitnahmeAb() {
+  stoppuhr.abort();
+  zeitnahmeVorbereitet = null;
+  zeitergebnis = null;
+  zeigeZeitnahme();
+}
+
+/**
+ * Der Takt der Anzeige.
+ *
+ * **Die Phase wird gerechnet und nicht gemeldet**, und deshalb braucht die
+ * Anzeige einen eigenen Takt. Er läuft allein während eines Durchgangs und
+ * hält sich selbst an: Ein Takt, der immer liefe, wäre eine Last ohne
+ * Gegenstand.
+ *
+ * **`requestAnimationFrame` und nicht `setInterval`.** Jener ist an das
+ * Zeichnen gekoppelt und zeichnet nie öfter, als das Bild wechselt; dieser wäre
+ * eine zweite Uhr neben der, die ohnehin gefragt wird.
+ */
+function taktZeitnahme() {
+  if (zeittaktLaeuft) return;
+  zeittaktLaeuft = true;
+  const schritt = () => {
+    if (!zeitLaeuft()) {
+      zeittaktLaeuft = false;
+      return;
+    }
+    zeigeZeitnahme();
+    requestAnimationFrame(schritt);
+  };
+  requestAnimationFrame(schritt);
+}
+
+/**
+ * Meldet die Lage des Übungswürfels an den Ablauf.
+ *
+ * **Der Ablauf entscheidet, ob sie zählt**, und nicht diese Stelle: Am eigenen
+ * Würfel greift die Meldung nicht, und während der Inspektion ebenso wenig.
+ * Hier steht deshalb kein Vergleich auf den Weg, sondern der Befund.
+ */
+function pruefeZeitnahme() {
+  if (!stoppuhr.observe(verlauf.zustand())) return;
+  nimmZeitergebnis();
+  zeigeZeitnahme();
+}
+
+/**
+ * Räumt einen Durchgang ab, dessen Lage gesetzt worden ist.
+ *
+ * **Allein für den Weg über den Bildschirm**, entschieden vom Product Owner am
+ * 2026-09-03. Dort ist der Übungswürfel der Gegenstand des Versuchs; wer ihn
+ * ersetzt, hat den Versuch beendet, und die Uhr misst sonst gegen eine Lage,
+ * die mit ihm nichts mehr zu tun hat. **Am eigenen Würfel greift der Abbruch
+ * nicht:** Dort hat der Übungswürfel mit dem Versuch nichts zu tun, und der
+ * Ablauf sagt zu, dass allein der Anwender beendet.
+ *
+ * **Ein abgeschlossener Durchgang bleibt stehen.** Sein Ergebnis beschreibt
+ * keine Lage, sondern eine Zeit, die gemessen worden ist; es mit dem Würfel
+ * abzuräumen nähme dem Anwender die Auskunft, für die er gerade gelöst hat.
+ */
+function raeumeZeitnahmeAb() {
+  const weg = stoppuhr.status().mode ?? zeitnahmeVorbereitet;
+  if (weg === null || weg === TIMING_MODES.OWN_CUBE) return;
+  if (!zeitLaeuft() && zeitnahmeVorbereitet === null) return;
+  stoppuhr.abort();
+  zeitnahmeVorbereitet = null;
+  zeigeZeitnahme();
+}
+
+/**
+ * Der Titel einer Stelle des Pfades, gleich aus welchem Bestand.
+ *
+ * **Die Weiche sitzt an dieser einen Stelle**, seit 4T-0121. Bis dahin löste
+ * die Anzeige jeden Bezeichner als `lektion.<kennung>.titel` auf, und genau
+ * das hielt `abhaengigeVon` in `progress.js` auf den eigenen Bestand
+ * beschränkt: Wer die letzte Lektion übersprang, hätte sonst vier fehlende
+ * Textbausteine gesehen.
+ */
+function titelVon(kennung) {
+  return text(`${isLesson(kennung) ? 'lektion' : 'stufe'}.${kennung}.titel`);
+}
+
+/** Die Nummer einer Stelle des Pfades, gleich aus welchem Bestand. */
+function nummerVon(kennung) {
+  return (lessonFor(kennung) ?? stageFor(kennung)).number;
+}
+
+/**
+ * Setzt eine gehaltene Meldung in die Werte der laufenden Sprache um.
+ *
+ * **Eine Funktion für beide Bereiche.** Welcher Wortlaut erscheint, steht im
+ * Bezeichner der Meldung selbst, und der kommt aus dem Bereich, der sie gesetzt
+ * hat; aufzulösen sind hier allein Nummer, Name und Liste, und die sind seit
+ * 4T-0121 bestandsneutral.
+ */
+function rueckmeldungFuerAnzeige(quelle) {
+  if (quelle === null) return null;
+  const werte = { ...(quelle.werte ?? {}) };
+  if (quelle.stelle) {
+    werte.nummer = nummerVon(quelle.stelle);
+    werte.name = titelVon(quelle.stelle);
   }
-  if (rueckmeldung.lektionen) {
-    werte.liste = rueckmeldung.lektionen
-      .map((kennung) => text(`lektion.${kennung}.titel`))
-      .join(', ');
+  if (quelle.stellen) {
+    werte.liste = quelle.stellen.map(titelVon).join(', ');
   }
-  return { bezeichner: rueckmeldung.bezeichner, art: rueckmeldung.art, werte };
+  return { bezeichner: quelle.bezeichner, art: quelle.art, werte };
 }
 
 /** Setzt die gehaltene Auskunft in die Worte der laufenden Sprache um. */
@@ -1529,17 +2305,44 @@ function richteBlickAus(kennung) {
  * Übung.** Der Lektionstext spricht von ihr, und ein Anwender, der ihn liest,
  * soll sehen, wovon die Rede ist. Entscheid des Product Owners vom 2026-08-17.
  *
+ * **Ausgenommen ist eine geladene Lösung**, seit 4T-0212. Wer sie abspielt,
+ * arbeitet am ganzen Würfel, und der Lernpfad tritt dabei zurück; bis dahin
+ * blieb der Würfel trotzdem bis auf eine Ecke abgedunkelt, weil die
+ * Auszeichnung am Lektionswechsel hing und nicht an der Tätigkeit. Gefunden im
+ * Abnahmelauf vom 2026-11-20, B7. **Eine Vorführung behält sie**, denn dort
+ * zeigt die Lektion ihre eigene Folge, und die Ecke ist deren Gegenstand.
+ *
+ * **Ebenso ausgenommen ist eine offene Eingabe**, aus demselben Grund: Auch
+ * dort tritt der Lernpfad zurück, und das abgedunkelte Netz ist genau die
+ * Fläche, auf der getippt wird. Gefunden von der unabhängigen Prüfung am
+ * 2026-11-20. Beginn und Ende der Eingabe ziehen die Ecke deshalb selbst
+ * nach, denn sie zeichnen den Lernpfad nicht.
+ *
+ * Gerechnet wird deshalb aus dem Zustand und nachgezogen bei jeder Zeichnung
+ * des Lernpfads, die an allen Wechseln der Wiedergabe ohnehin läuft. Gezeichnet
+ * wird nur bei einer Änderung, denn diese Zeichnung läuft oft.
+ *
  * Der Anschluss sitzt hier und nicht im Lektionsbereich: Der Katalog nennt
  * einen Bezeichner, die Geometrie kennt die Stellung, und zusammen kommen beide
  * allein in der Verdrahtung.
  */
-function hebeArbeitsstelleHervor(kennung) {
-  const stellung = focusFor(kennung) === FOCUS.WORKING_CORNER ? ARBEITSECKE : null;
+function hebeArbeitsstelleHervor() {
+  const stellung =
+    wiedergabeArt !== WIEDERGABE.LOESUNG &&
+    !eingabeOffen &&
+    focusFor(laufendeLektion) === FOCUS.WORKING_CORNER
+      ? ARBEITSECKE
+      : null;
+  if (stellung === gezeigteArbeitsstelle) return;
+  gezeigteArbeitsstelle = stellung;
   wuerfel.hebeSteinHervor(stellung);
   netz.hebeSteinHervor(stellung);
 }
 
 function zeigeLektion() {
+  // Die Zurücknahme hängt an Lektion und Wiedergabe, und beide ändern sich nur
+  // an Stellen, die hierher führen.
+  hebeArbeitsstelleHervor();
   lektionsbereich.zeige({
     stand: bereichsstand({
       uebersicht: pfad.overview(),
@@ -1551,7 +2354,7 @@ function zeigeLektion() {
     }),
     text,
     laeuft: pfad.running() === laufendeLektion,
-    rueckmeldung: rueckmeldungFuerAnzeige(),
+    rueckmeldung: rueckmeldungFuerAnzeige(rueckmeldung),
     hilfe: hilfeFuerAnzeige(),
     hilfeLaeuft,
     rueckweg: rueckweg !== null,
@@ -1582,7 +2385,6 @@ function waehleLektion(kennung, abstecherVon = null) {
     hilfe = null;
     hilfeNummer++;
     richteBlickAus(kennung);
-    hebeArbeitsstelleHervor(kennung);
   }
   // Auch bei gleicher Lektion, denn der Rückweg hat sich in jedem Fall
   // geändert. Vorher endete die Funktion hier ohne jede Wirkung.
@@ -1607,6 +2409,15 @@ function springeZurLektion(kennung) {
   // ins Leere: Der Sprung landete auf einer Marke, hinter der die Lektion
   // steckt, die er zeigen soll.
   lektionsbereich.klappe(true);
+  // **Die einzige Stelle, an der das Programm den äußeren Aufklapper anfasst**,
+  // 4T-0130. Er gehört seither dem Anwender, und deshalb steht hier kein
+  // Gegenzug in `kehreZurLoesungZurueck`: Aufklappen beantwortet eine Bitte,
+  // Zuklappen nähme etwas weg, das der Anwender selbst geöffnet haben kann.
+  //
+  // Die Bitte ist ausdrücklich. «Zur Lektion» steht in der Wiedergabeanzeige
+  // und damit außerhalb des Bereichs; wer ihn weggeräumt hat, kann trotzdem
+  // drücken, und eine geschlossene Marke wäre keine Antwort darauf.
+  lernpfadKlappe.open = true;
   lektionHalter.scrollIntoView({ block: 'start' });
 }
 
@@ -1727,7 +2538,7 @@ function beginneUebung() {
 function verarbeiteAnwendung(ergebnis) {
   if (!ergebnis.counted) return;
   if (ergebnis.unlocked !== null) {
-    rueckmeldung = { bezeichner: 'pfad.freigegeben', art: 'erfolg', lektion: ergebnis.unlocked };
+    rueckmeldung = { bezeichner: 'pfad.freigegeben', art: 'erfolg', stelle: ergebnis.unlocked };
   } else if (ergebnis.completed) {
     // **Der Abschluss des ganzen Weges ist eine eigene Nachricht**, denn er ist
     // das Quality-Gate von Release 1: Wer hier ankommt, kann den Zauberwürfel
@@ -1769,9 +2580,777 @@ function ueberspringeLektion() {
   laufendeLektion = pfad.resume().key;
   rueckmeldung =
     betroffen.length > 0
-      ? { bezeichner: 'pfad.bautAufDiese', art: 'hinweis', lektionen: betroffen }
+      ? { bezeichner: 'pfad.bautAufDiese', art: 'hinweis', stellen: betroffen }
       : null;
   zeigeLektion();
+  // **Der Hinweis nennt seit 4T-0121 auch die Stufen**, die auf der
+  // übersprungenen Lektion aufbauen, und deren Freigabe ändert sich mit. Die
+  // Anzeige des Übergangs muss deshalb mit.
+  zeigeCfop();
+}
+
+/**
+ * Gibt die angezeigte Lektion frei, indem alles davor übersprungen wird.
+ *
+ * Der freie Einstieg, 4T-0207. **Die Anzeige bleibt bei der gewählten
+ * Lektion** und rückt nicht weiter wie beim Überspringen: Der Anwender will
+ * hier üben, und genau das ist danach möglich.
+ */
+function steigeInLektionEin() {
+  if (!window.confirm(text('pfad.einsteigenWirklich'))) return;
+  const ergebnis = pfad.skipTo(laufendeLektion);
+  if (!ergebnis.ok) return;
+  rueckmeldung =
+    ergebnis.skipped.length > 0
+      ? { bezeichner: 'pfad.eingestiegen', art: 'hinweis', stellen: ergebnis.skipped }
+      : null;
+  zeigeLektion();
+  // Die Freigabe der Stufen hängt an der letzten Lektion, und wer bei ihr
+  // einsteigt, hat sie noch nicht erledigt; gezeichnet wird trotzdem beides,
+  // damit keine Aufrufstelle von dieser Überlegung abhängt.
+  zeigeCfop();
+}
+
+// ------------------------- Die Bedienung des Übergangs, 4T-0121
+
+/**
+ * Der Fall, den die Blicke dieser Stufe an der vorliegenden Lage finden, und
+ * ob dort etwas zu tun ist, wozu der Bestand keinen Fall führt.
+ *
+ * **Der erste Blick, der etwas zu tun findet, ist der zuständige**, und mit ihm
+ * endet die Suche. Findet er einen Fall, den der Bestand nicht führt, so ist
+ * die Antwort kein Fall und nicht der nächste Blick: Der Anwender muss diesen
+ * Blick zuerst erledigen, und ein Fall aus dem zweiten wiese ihn an die falsche
+ * Stelle.
+ *
+ * **Kein Fall heißt zweierlei, und seit 4T-0196 sagt diese Auskunft, welches
+ * von beiden.** Entweder findet kein Blick etwas zu tun, dann ist die Lage für
+ * diese Stufe erledigt; oder ein Blick findet etwas und der Bestand führt dazu
+ * nichts. Der zweite Fall ist bei den ersten beiden Schichten der Regelfall
+ * für siebzehn Lagen, die der Product Owner am 2026-09-06 bewusst nicht
+ * hinterlegt hat, und er tritt ebenso im geführten Umfang des Setzens auf.
+ * **Ein gemeinsames `null` für beides sagte dem Anwender «hier ist nichts zu
+ * tun», wo er gerade etwas zu tun hat.**
+ *
+ * **Eine Rechnung und zwei Auskünfte**, wie bei `trainingsanzeige` seit
+ * 4T-0139: Wer die Lage zweimal läse, könnte zwei verschiedene Antworten
+ * bekommen, sobald zwischen den Lesevorgängen ein Zug fällt.
+ *
+ * Für eine Stufe ohne Fallmenge ist die Liste der Blicke leer, und beide
+ * Auskünfte fallen aus. Das ist kein Sonderfall, sondern dieselbe Rechnung.
+ */
+function fallDerLage(kennung) {
+  const ohneFall = { fall: null, nichtHinterlegt: false };
+  if (stageFor(kennung) === null) return ohneFall;
+  const zustand = verlauf.zustand();
+  for (const blick of viewsOf(kennung, pfad.editionOf(kennung))) {
+    if (caseIdFor(zustand, blick) === solvedIdFor(blick)) continue;
+    const fall = caseFor(zustand, blick);
+    if (fall === null) return { fall: null, nichtHinterlegt: true };
+    return {
+      fall: {
+        kennung: `${fall.view}/${fall.id}`,
+        name: textKeyFor(fall, 'name'),
+        texte: CASE_TEXTS.filter((teil) => teil !== 'name').map((teil) => ({
+          art: teil,
+          bezeichner: textKeyFor(fall, teil),
+        })),
+        folge: fall.sequence,
+        alternativen: fall.alternatives,
+        rueckfall: rueckfallBraechteEtwas(kennung, zustand, `${fall.view}/${fall.id}`),
+      },
+      nichtHinterlegt: false,
+    };
+  }
+  return ohneFall;
+}
+
+/**
+ * Brächte ein Rückfall auf die andere Fassung für diese Lage etwas, 4T-0172?
+ *
+ * **Die dritte Bedingung des Hinweises, und sie ist gerechnet und nicht als
+ * Liste geschrieben.** Dieselbe Lage wird ein zweites Mal gelesen, mit den
+ * Blicken der anderen Fassung, und nur wenn dabei ein **anderer** Fall
+ * herauskommt, ist der Rückfall ein anderer Weg.
+ *
+ * **Der Grund steht im Bestand und ist gemessen:** Vier der einundzwanzig Fälle
+ * des Setzens stehen in beiden Fassungen unter derselben Kennung, nämlich die
+ * vier Kantentausche. Dort führte der Rückfall auf denselben Fall mit derselben
+ * Folge, und ein Satz, der einen einfacheren Weg verspricht, wäre schlicht
+ * falsch. Eine geschriebene Ausnahmeliste liefe dem Bestand davon, sobald
+ * 3E-0058 die siebenundfünfzig Fälle des Orientierens bringt; wie viele davon
+ * beide Fassungen teilen, weiß heute niemand.
+ *
+ * **Nur aus dem vollen Umfang heraus**, denn in der reduzierten Fassung gibt es
+ * nichts, worauf zurückzufallen wäre, und nur, wo überhaupt umgeschaltet werden
+ * kann.
+ *
+ * **Führt die reduzierte Fassung überhaupt keinen Blick, so ist der Rückfall
+ * immer ein anderer Weg**, seit 4T-0196. Das trifft allein die dritte Stufe:
+ * Ihr geführter Weg ist das eigene Einlegen des Paares und damit
+ * notwendigerweise etwas anderes als die hinterlegte Abkürzung. Ein Vergleich
+ * zweier Fälle wäre dort nicht bloß überflüssig, sondern unmöglich, denn die
+ * eine Seite hat keinen.
+ */
+function rueckfallBraechteEtwas(kennung, zustand, kennungDesFalls) {
+  if (!anyEditionFilled(kennung)) return false;
+  if (pfad.editionOf(kennung) !== EDITIONS.FULL) return false;
+  if (!masteredByCoverage(kennung)) return true;
+  for (const blick of viewsOf(kennung, EDITIONS.REDUCED)) {
+    if (caseIdFor(zustand, blick) === solvedIdFor(blick)) continue;
+    const anderer = caseFor(zustand, blick);
+    // Führt die andere Fassung zu dieser Lage keinen Fall, so ist sie kein
+    // gangbarer Weg, und der Hinweis unterbleibt. Dass das eintreten kann, ist
+    // der Grund, aus dem hier gerechnet und nicht angenommen wird.
+    if (anderer === null) return false;
+    return `${anderer.view}/${anderer.id}` !== kennungDesFalls;
+  }
+  return false;
+}
+
+/**
+ * Schaltet die Fassung dieser Stufe um, 4T-0171.
+ *
+ * **Die laufende Übung endet mit.** Der Fortschritt räumt beim Wechsel die
+ * Übungsaufgabe des Trainings ab; die Übung des Übergangs steht daneben und
+ * wird hier beendet. Beide stünden sonst auf einer Lage, deren Fall die neue
+ * Fassung womöglich nicht führt.
+ *
+ * **Ein Wechsel, der keiner ist, zeichnet nicht neu.** Wer die geltende Fassung
+ * noch einmal wählt, bekommt `changed: false`, und der Bereich bleibt, wie er
+ * ist; ein Neuzeichnen setzte den Aufklapper und die Rückmeldung ohne Anlass
+ * zurück.
+ */
+function waehleStufenfassung(fassung) {
+  const ergebnis = pfad.setEdition(laufendeStufe, fassung);
+  if (!ergebnis.ok || !ergebnis.changed) return;
+  pfad.abort();
+  stufenaufgabe = null;
+  stufenRueckmeldung = null;
+  zeigeCfop();
+}
+
+/** Die Fälle dieser Stufe mit ihren Namensbezeichnern, in der Reihenfolge des Bestands. */
+function faelleDerStufe(kennung) {
+  return casesForStage(kennung, pfad.editionOf(kennung)).map((fallkennung) => ({
+    kennung: fallkennung,
+    name: nameDesFalls(fallkennung),
+  }));
+}
+
+function zeigeStufe() {
+  const lage = fallDerLage(laufendeStufe);
+  stufenbereich.zeige({
+    stand: stufenstand({
+      uebersicht: pfad.stageOverview(),
+      laufend: laufendeStufe,
+      fall: lage.fall,
+      nichtHinterlegt: lage.nichtHinterlegt,
+      faelle: faelleDerStufe(laufendeStufe),
+      deckung: pfad.coverageOf(laufendeStufe),
+      fassung: pfad.editionOf(laufendeStufe),
+      fassungen: editionsOfStage(laufendeStufe),
+      // **Welche der beiden Freigaberegeln gilt, rechnet der Bestand**, seit
+      // 4T-0196. Die Anzeige kennt den Fallbestand nicht und darf ihn nicht
+      // kennen; dieselbe Arbeitsteilung wie bei den Fassungen darüber.
+      deckungMisst: masteredByCoverage(laufendeStufe),
+      // **Der Bereich benennt jede aufgelegte Lage, und das Training legt
+      // seine Aufgaben auf denselben Würfel.** Ohne diese Zeile stünde die
+      // Antwort der Erkennungsübung im Bereich darüber, samt Merkmal und
+      // Zugfolge. Verdeckt wird ohne Ansehen der hier gewählten Stufe: Die
+      // Lage ist dieselbe, gleich welcher Blick sie liest.
+      //
+      // **Seit 4T-0141 auch ohne Ansehen der Übungsform.** Bei der Ausführung
+      // ist der Name kein Geheimnis, die Zugfolge aber sehr wohl, und AK2 von
+      // S-0046 verlangt, dass sie vor dem Versuch nicht sichtbar ist. Eine
+      // abgestufte Verdeckung, die den Namen stehen ließe, ist verworfen und
+      // zwar nicht aus Sparsamkeit: Der Bereich benennt den Fall der
+      // **liegenden** Lage, und die ändert sich beim Ausführen mit jedem Zug.
+      // Ein stehengelassener Name wäre nach dem ersten Zug nicht hilfreich,
+      // sondern falsch. Entschieden vom Product Owner am 2026-09-02.
+      verdeckt: trainingsaufgabe !== null,
+    }),
+    text,
+    laeuft: pfad.running() === laufendeStufe,
+    rueckmeldung: rueckmeldungFuerAnzeige(stufenRueckmeldung),
+  });
+}
+
+/**
+ * Zeichnet den Trainingsbereich.
+ *
+ * **Die Fallzahl kommt aus dem Bestand und nicht aus einer Liste**, seit
+ * 4T-0138. Welche Stufe zur Wahl steht, entscheidet `trainingsstand` an dieser
+ * Zahl; damit erscheint eine Stufe von selbst, sobald der Bestand ihr Fälle
+ * gibt, und Punkt 3 des Quality-Gates von 2A-0019 ist ohne eine zweite Pflege
+ * eingelöst.
+ */
+function zeigeTraining() {
+  const stand = trainingsanzeige();
+  trainingsbereich.zeige({ stand, text, uebung: uebungsstand(stand) });
+}
+
+/**
+ * Der gerechnete Stand des Trainingsbereichs.
+ *
+ * **Eine Ausführung und nicht zwei Rechnungen**, seit 4T-0139: Die Anzeige
+ * braucht ihn, und das Stellen einer Aufgabe braucht daraus die gewählte
+ * Stufe. Wer sie an zwei Stellen ermittelte, könnte eine Aufgabe aus einer
+ * anderen Stufe stellen, als die Anzeige hervorhebt.
+ */
+function trainingsanzeige() {
+  return trainingsstand({
+    uebersicht: pfad.stageOverview().map((eintrag) => ({
+      ...eintrag,
+      faelle: faelleDerStufe(eintrag.key),
+      // Die Messwerte je Übungsform, 4T-0143. **Für jede Stufe und nicht für
+      // die gewählte**, denn welche gewählt ist, entscheidet erst
+      // `trainingsstand`; diese Stelle kennt die Antwort noch nicht. Dieselbe
+      // Lage und derselbe Weg wie bei `faelle` seit 4T-0138.
+      messwerte: Object.fromEntries(
+        UEBUNGSFORMEN.map((form) => [form, pfad.metricsOf(eintrag.key, form)]),
+      ),
+    })),
+    formen: UEBUNGSFORMEN,
+    stufe: trainingsstufe,
+    form: trainingsform,
+  });
+}
+
+/**
+ * Was die Übung zu dieser Wahl gerade zeigt, oder `null`.
+ *
+ * `null` heißt: An dieser Wahl gibt es nichts zu üben, und das ist seit
+ * 4T-0141 nur noch ein Fall. Ohne freie Stufe gibt es keinen Fallbestand, aus
+ * dem sich eine Aufgabe stellen ließe. **Eine Schaltfläche, die nichts bewirkt,
+ * wäre der schlechtere Weg**, denn sie sähe aus wie eine, die etwas bewirkt.
+ *
+ * **Die zweite Bedingung ist mit der Ausführungsübung weggefallen.** Bis
+ * 4T-0140 lieferte diese Stelle für jede Form außer der Erkennung `null`, weil
+ * es die andere Übung noch nicht gab.
+ *
+ * `aufgabe` sagt dem Bereich, ob der Fall **gegeben** ist. Bei der Ausführung
+ * ist er das, denn wer eine Zugfolge ausführen soll, muss wissen, welche; bei
+ * der Erkennung ist er die gesuchte Antwort und bleibt draußen. **Das ist die
+ * einzige Stelle, an der die Übungsform über die Anzeige entscheidet**, und sie
+ * steht hier und nicht im Bereich: Nach Grundsatz 3 der Architektur wird in
+ * `app` verdrahtet.
+ *
+ * **`auswahl` trägt seit 4T-0173 die Namen zur Wahl.** Die Kennungen zieht
+ * `createExercise` mit der Aufgabe; **diese Stelle setzt allein die Namen
+ * dazu**, wie sie es für `aufgabe` schon tut. Sie ist `null`, wo die Aufgabe
+ * keine trägt, also bei der Ausführung und ohne laufende Aufgabe; der Bereich
+ * leert die Schaltflächen dann.
+ */
+function uebungsstand(stand) {
+  if (stand.gewaehlt === null) return null;
+  const gegeben =
+    trainingsaufgabe !== null && trainingsaufgabe.mode === EXERCISE_MODES.EXECUTION
+      ? { name: nameDesFalls(trainingsaufgabe.kennung) }
+      : null;
+  const auswahl =
+    trainingsaufgabe === null || trainingsaufgabe.choices === null
+      ? null
+      : trainingsaufgabe.choices.map((fallkennung) => ({
+          kennung: fallkennung,
+          name: nameDesFalls(fallkennung),
+        }));
+  return {
+    laeuft: trainingsaufgabe !== null,
+    urteil: trainingsurteil,
+    aufgabe: gegeben,
+    auswahl,
+  };
+}
+
+/**
+ * Stellt eine Übungsaufgabe aus der gewählten Stufe und legt ihre Lage auf.
+ *
+ * **Die Reihenfolge ist bindend:** erst `setze`, dann `beginAttempt`. Jedes
+ * Setzen läuft über `uebernimmZustand`, und das ruft `pfad.abort()`, was seit
+ * 4T-0134 auch die laufende Übungsaufgabe beendet. Umgekehrt gebaut meldete
+ * diese Ausführung eine Aufgabe an und beendete sie in derselben Zeile wieder;
+ * das erste Urteil käme dann mit `NOT_RUNNING` zurück. Dieselbe Reihenfolge
+ * hält `beginneStufenuebung` mit `pfad.begin`.
+ *
+ * **Die Messwerte kommen aus dem Pfad und werden nicht dort geholt, wo gezogen
+ * wird.** `pickCase` in `lessons/exercise.js` bekommt sie hereingereicht, weil
+ * `progress.js` jenes Modul liest und ein Import in die Gegenrichtung ein Kreis
+ * wäre; diese Stelle ist die, die beide kennt.
+ */
+function beginneTrainingsaufgabe() {
+  const stand = trainingsanzeige();
+  if (uebungsstand(stand) === null) return;
+  const aufgabe = createExercise(stand.gewaehlt, {
+    mode: stand.form,
+    metrics: pfad.metricsOf(stand.gewaehlt, stand.form),
+    edition: pfad.editionOf(stand.gewaehlt),
+  });
+  // Eine Stufe ohne Fallmenge liefert `null`. Sie steht nicht zur Wahl, und
+  // deshalb ist das hier kein erwarteter Weg; die Zeile ist der Schutz gegen
+  // einen Bestand, der sich unter der Anzeige ändert, und kein zweiter Zweig.
+  if (aufgabe === null) return;
+  legeTrainingsaufgabeAuf(aufgabe);
+  zeigeCfop();
+}
+
+/**
+ * Legt die Lage einer Übungsaufgabe auf und meldet sie an, 4T-0142.
+ *
+ * **Eine Stelle für beide Wege**, das erste Stellen und die Wiederholung nach
+ * einem Fehlversuch. Der Grund ist die Reihenfolge darin: Sie ist eine Falle,
+ * und zwei Fassungen davon wären zwei Gelegenheiten, hineinzutreten.
+ *
+ * **Die Reihenfolge erst `setze`, dann `beginAttempt` ist bindend.** Jedes
+ * Setzen läuft über `uebernimmZustand`, und das ruft `pfad.abort()`, was seit
+ * 4T-0134 auch die laufende Übungsaufgabe beendet. Umgekehrt gebaut meldete
+ * diese Ausführung eine Aufgabe an und beendete sie in derselben Zeile wieder;
+ * das erste Urteil käme dann mit `NOT_RUNNING` zurück. Dieselbe Reihenfolge
+ * hält `beginneStufenuebung` mit `pfad.begin`.
+ *
+ * Eine laufende Wiedergabe hielte den Übungswürfel gesperrt und schriebe ihren
+ * nächsten Zug über die frische Lage, wie beim Übergang.
+ */
+function legeTrainingsaufgabeAuf(aufgabe) {
+  wiedergabe.halteAn();
+  wiedergabeArt = null;
+  setze(aufgabe.state);
+  trainingsaufgabe = aufgabe;
+  pfad.beginAttempt(aufgabe.key, { kennung: aufgabe.kennung, mode: aufgabe.mode });
+}
+
+/**
+ * Legt die Lage des letzten Fehlversuchs noch einmal auf, 4T-0142.
+ *
+ * **Die Lage wird gehalten und nicht neu erzeugt.** `createExercise` hat sie
+ * geliefert, und dieselbe Zufallsquelle noch einmal zu befragen brächte
+ * dieselbe Lage nur unter einer Zusage, die niemand gegeben hat.
+ *
+ * **Es ist ein neuer Versuch und keine Wiederholung ohne Folgen**, entschieden
+ * vom Product Owner am 2026-09-02. Die Deckung fragt nach Abschnitt 11.7 des
+ * Didaktik-Konzepts, ob der Fall am Würfel gelungen ist, und nicht, ob der
+ * Anwender ihn auswendig konnte; wer die Folge liest und ausführt, hat sie
+ * ausgeführt. Die Quote bleibt dabei ehrlich, denn der Fehlversuch von eben ist
+ * längst gebucht: Der Fall steht danach bei zwei Versuchen und einem Fehler und
+ * wird von `pickCase` weiterhin oft gezogen.
+ *
+ * **Der Preis ist benannt und in Kauf genommen:** Wer aufgibt, die Folge liest
+ * und sie nachspielt, deckt den Fall. Das ist Absicht des Anwenders und nicht
+ * das unabsichtliche Umgehen, gegen das `uebernimmZustand` seine Übung
+ * abbricht.
+ *
+ * **Die gehaltene Aufgabe wird vor dem Setzen gerettet.** `setze` räumt sie
+ * eine Zeile später mit, und ohne die Kopie stünde hier `null`.
+ */
+function wiederholeTrainingsaufgabe() {
+  if (trainingsWiederholung === null) return;
+  const aufgabe = trainingsWiederholung;
+  legeTrainingsaufgabeAuf(aufgabe);
+  zeigeCfop();
+}
+
+/**
+ * Urteilt über die genannte Antwort und bucht den Versuch.
+ *
+ * **Gebucht wird über `recordAttempt` und nicht über `recordCase`.** Die
+ * Deckung wächst nach Abschnitt 11.7 des Didaktik-Konzepts allein aus der am
+ * Würfel geprüften Anwendung; eine richtige Benennung ist keine. `progress.js`
+ * hält das selbst so und nimmt den Fall nur bei der Ausführung auf.
+ *
+ * **Der Übergang wird mitgezeichnet**, weil mit dem Urteil die Verdeckung des
+ * Falls endet: Sobald die Antwort gesagt ist, darf der Bereich darüber sie
+ * wieder nennen.
+ */
+function beantworteTrainingsaufgabe(genannt) {
+  const urteil = judgeExercise(trainingsaufgabe, genannt);
+  if (urteil === null) return;
+  buchTrainingsurteil({
+    richtig: urteil.correct,
+    bezeichner: urteil.correct ? 'training.richtig' : 'training.falsch',
+    kennung: urteil.kennung,
+    merkmale: merkmaleZumUrteil(urteil, genannt),
+  });
+  zeigeCfop();
+}
+
+/**
+ * Bucht ein Urteil über die laufende Übungsaufgabe und hält es fest, 4T-0141.
+ *
+ * **Eine Buchungsstelle für drei Wege**, die richtige Benennung, die gelungene
+ * Ausführung und das Aufgeben. Alle drei tun dasselbe: den Versuch buchen, das
+ * Urteil halten und die Aufgabe beenden. Drei Fassungen davon liefen einander
+ * früher oder später davon, und die Reihenfolge dieser drei Zeilen ist nicht
+ * beliebig: Wer die Aufgabe vor der Buchung räumte, bekäme `NOT_RUNNING`.
+ *
+ * **Der Wortlaut kommt von außen und wird hier nicht gerechnet.** Was ein
+ * Urteil sagt, hängt an der Übungsform und am Weg dorthin; ob es ein Erfolg
+ * ist, sagt `richtig`.
+ *
+ * Ohne angemeldete Aufgabe wird nichts gebucht, und dann steht auch kein
+ * Urteil an. Der Fall entsteht nicht aus der Bedienung, denn Antworten,
+ * Aufgeben und Prüfung setzen alle eine laufende Aufgabe voraus.
+ *
+ * **Gezeichnet wird hier nicht**, denn die drei Aufrufer stehen verschieden:
+ * Zwei kommen aus der Bedienung und zeichnen selbst, der dritte läuft in
+ * `pruefeUebung`, die am Ende ohnehin `zeigeCfop` ruft.
+ */
+function buchTrainingsurteil({ richtig, bezeichner, kennung, merkmale = [], auskunft = null }) {
+  const gelaufen = trainingsaufgabe;
+  const gebucht = pfad.recordAttempt(richtig);
+  if (!gebucht.counted) return;
+  trainingsurteil = { richtig, bezeichner, name: nameDesFalls(kennung), merkmale, auskunft };
+  // **Die Wiederholung hängt an der Auskunft und nicht an einer zweiten
+  // Bedingung**, 4T-0142. Beide gehören demselben Augenblick, dem misslungenen
+  // Versuch der Ausführung; zwei Bedingungen dafür könnten auseinanderlaufen,
+  // und dann stünde eine Schaltfläche ohne die Auskunft da, für die sie gemacht
+  // ist, oder umgekehrt.
+  trainingsWiederholung = auskunft === null ? null : gelaufen;
+  trainingsaufgabe = null;
+}
+
+/**
+ * Prüft den Übungswürfel gegen die laufende Ausführungsaufgabe, 4T-0141.
+ *
+ * **Geurteilt wird nach jedem Zug, und gebucht wird nur der Erfolg.** Ein
+ * Misserfolg nach jedem Zug wäre kein Urteil, sondern der Normalzustand: Wer
+ * eine zwölfzügige Folge ausführt, ist elfmal nicht fertig. Der Fehlversuch
+ * entsteht deshalb allein über das Aufgeben.
+ *
+ * **Dass ein Zwischenstand das Urteil nicht zu früh auslöst, ist gemessen und
+ * nicht angenommen.** Über 3200 korrekte Ausführungen mit allen ihren
+ * Zwischenständen, 9600 falsch ausgerichtete Wege und 64000 zufällige
+ * Grundzüge hat kein einziger den Blick gelöst, ohne dass die Aufgabe
+ * tatsächlich erledigt war. Die Messung steht in 4T-0141; der Verdacht kam aus
+ * 3E-0046 und ist damit widerlegt.
+ *
+ * **Die Erkennung geht hier nicht durch, und dieser Wächter ist heute ohne
+ * Ausschlag.** Am 2026-09-02 gemessen: Nimmt man ihn heraus, urteilt
+ * `judgeExercise` über eine Erkennungsaufgabe mit einem Zustand als Antwort und
+ * liefert `correct: false`, denn ein Zustand ist nie eine Fallkennung. Es fiele
+ * also nichts aus, und keine Prüfung sagt es.
+ *
+ * **Er bleibt trotzdem stehen**, und darin liegt der Unterschied zu dem
+ * Wächter, den 4T-0119 aus `createStageSetup` entfernt hat. Jener war
+ * überflüssig, weil derselbe Grund beide Wege trug. Dieser wäre überflüssig aus
+ * einem Grund, der mit seiner Absicht nichts zu tun hat: dass ein Typvergleich
+ * zufällig nie zutrifft. Der Rückfall darunter fängt das Ergebnis, nicht die
+ * Frage; diese Zeile sagt, dass hier allein die Ausführung geprüft wird.
+ */
+function pruefeTrainingsaufgabe() {
+  if (trainingsaufgabe === null) return;
+  if (trainingsaufgabe.mode !== EXERCISE_MODES.EXECUTION) return;
+  const urteil = judgeExercise(trainingsaufgabe, verlauf.zustand());
+  if (urteil === null || !urteil.correct) return;
+  buchTrainingsurteil({
+    richtig: true,
+    bezeichner: 'training.geschafft',
+    kennung: urteil.kennung,
+  });
+}
+
+/**
+ * Gibt die laufende Ausführungsaufgabe auf, 4T-0141.
+ *
+ * **Aufgeben ist ein Fehlversuch**, und das ist keine Härte, sondern die
+ * Voraussetzung der Übung: Nach der gewichteten Ziehung aus 4T-0135 bekommt ein
+ * Fall mit hoher Fehlerquote das zehnfache Gewicht, und genau der gehört als
+ * nächstes vorgelegt. Eine geschönte Quote legte ihn seltener vor. Entschieden
+ * vom Product Owner am 2026-08-29; der Kopf von `recordAttempt` in
+ * `progress.js` nennt diesen Weg seitdem ausdrücklich.
+ *
+ * **Geurteilt wird nicht.** Wer aufgibt, hat nicht gelöst, gleich wie der
+ * Würfel steht; ein gelöster hätte die Aufgabe eine Zeile früher beendet.
+ */
+function gibTrainingsaufgabeAuf() {
+  if (trainingsaufgabe === null) return;
+  buchTrainingsurteil({
+    richtig: false,
+    bezeichner: 'training.aufgegeben',
+    kennung: trainingsaufgabe.kennung,
+    auskunft: auskunftZumFall(trainingsaufgabe.kennung),
+  });
+  zeigeCfop();
+}
+
+/**
+ * Was nach einem aufgegebenen Versuch zu zeigen ist, 4T-0142.
+ *
+ * Die Zugfolge als **Wortlaut**, denn Notation ist in beiden Sprachen dieselbe,
+ * und den Bezeichner des Erkennungsbildes; dessen zweiten Absatz zeigt der
+ * Bereich, und der sagt, wie vor der Folge auszurichten wäre.
+ *
+ * **Die Alternative bleibt draußen**, entschieden vom Product Owner am
+ * 2026-09-02. Wer gerade gescheitert ist, braucht eine Folge zum Nachmachen und
+ * nicht die Wahl zwischen zweien; sie steht im Übergang, sobald die Aufgabe
+ * vorbei ist.
+ */
+function auskunftZumFall(fallkennung) {
+  return { folge: FALL_JE_KENNUNG.get(fallkennung).sequence, bild: bildDesFalls(fallkennung) };
+}
+
+/**
+ * Die Merkmale, die nach einem Fehler zu zeigen sind, 4T-0140.
+ *
+ * **Bei einer richtigen Antwort keines**, entschieden vom Product Owner am
+ * 2026-09-02: Wer den Fall erkannt hat, braucht nicht zu lesen, woran er zu
+ * erkennen gewesen wäre.
+ *
+ * **Bei einem Fehler zwei, und die Reihenfolge ist die der Auskunft.** Zuerst
+ * der gesuchte Fall, dann der genannte. Die Begründung von S-0045 verlangt
+ * genau die Gegenüberstellung: Ein einzelnes Merkmal sagt, was richtig gewesen
+ * wäre, und nicht, warum die eigene Lesart danebenlag.
+ *
+ * `urteil.kennung` ist immer die **richtige** Antwort, `genannt` die des
+ * Anwenders. Die beiden auseinanderzuhalten ist der ganze Zweck der zwei
+ * Namen; `judgeExercise` sagt es in seinem Kopf ebenso.
+ *
+ * **Entschieden wird an `correct` und nicht am Vergleich der beiden
+ * Kennungen.** Der Vergleich wäre hier zwar dasselbe, aber als zweite Lesart
+ * desselben Urteils: `judgeExercise` rechnet ihn bereits, und eine Stelle, die
+ * ihn nachrechnet, könnte ihm eines Tages davonlaufen.
+ */
+function merkmaleZumUrteil(urteil, genannt) {
+  if (urteil.correct) return [];
+  return [
+    { rolle: 'gesucht', name: nameDesFalls(urteil.kennung), bild: bildDesFalls(urteil.kennung) },
+    { rolle: 'genannt', name: nameDesFalls(genannt), bild: bildDesFalls(genannt) },
+  ];
+}
+
+/**
+ * Setzt die Messwerte der gewählten Stufe zurück, 4T-0144.
+ *
+ * **Die Rückfrage folgt dem Muster der fünf anderen Verlustfälle**, über
+ * `window.confirm` mit eigenem Textbaustein. Sie nennt die Stufe beim Namen und
+ * sagt zu, dass der Lernfortschritt bleibt: Was hier verloren geht, ist
+ * gemessene Arbeit, und wer den Griff mit dem Löschen des Fortschritts
+ * verwechselte, verlöre etwas, das er nicht wiederbekommt.
+ *
+ * **Der Wortlaut entsteht hier und nicht im Bereich.** Er nennt den Titel der
+ * Stufe, und wie eine Stufe heißt, weiß der Sprachbaum; der Bereich kennt ihn
+ * nicht, er bekommt Fertiges.
+ *
+ * **Der Stand wird neu gerechnet und nicht der alte gelesen.** Zwischen dem
+ * Zeichnen und dem Griff kann die Wahl gewechselt haben, und dann träfe das
+ * Zurücksetzen eine andere Stufe als die, unter deren Liste gedrückt wurde.
+ * Dieselbe Vorsicht übt `beginneTrainingsaufgabe`.
+ *
+ * **Ohne gewählte Stufe geschieht nichts**, und ohne gebuchten Versuch ebenso
+ * wenig: Die Schaltfläche ist dann gesperrt, und diese Zeile ist der Schutz
+ * gegen einen Bestand, der sich unter der Anzeige ändert.
+ */
+function setzeMesswerteZurueck() {
+  const stand = trainingsanzeige();
+  if (stand.gewaehlt === null || !stand.messwerteGebucht) return;
+  const titel = text(`stufe.${stand.gewaehlt}.titel`);
+  if (!window.confirm(text('training.zuruecksetzenWirklich', { titel }))) return;
+  pfad.resetMetrics(stand.gewaehlt);
+  zeigeCfop();
+}
+
+/**
+ * Beendet eine laufende Übungsaufgabe, ohne sie zu buchen.
+ *
+ * **Ein Abbruch ist kein Fehlversuch**, und `abort` in `progress.js` hält es
+ * ebenso: Der Anwender hat den Fall nicht abgelehnt, sondern gar nicht erst
+ * beantwortet. Das Urteil geht mit, denn es gehört zur alten Wahl.
+ */
+function beendeTrainingsaufgabe() {
+  const lief = trainingsaufgabe !== null;
+  trainingsaufgabe = null;
+  trainingsurteil = null;
+  trainingsWiederholung = null;
+  if (lief) pfad.abort();
+}
+
+/**
+ * Der Bezeichner, unter dem ein Baustein eines Falls im Sprachbaum steht.
+ *
+ * **Die Zusammensetzung steht an einer Stelle und nicht an jeder.** `textKeyFor`
+ * im Bestand kennt sie, und wer die Worte eines Falls braucht, fragt hier.
+ */
+function bausteinDesFalls(fallkennung, teil) {
+  return textKeyFor(FALL_JE_KENNUNG.get(fallkennung), teil);
+}
+
+/** Der Bezeichner, unter dem der Name eines Falls im Sprachbaum steht. */
+function nameDesFalls(fallkennung) {
+  return bausteinDesFalls(fallkennung, 'name');
+}
+
+/** Der Bezeichner des Erkennungsbildes eines Falls, 4T-0140. */
+function bildDesFalls(fallkennung) {
+  return bausteinDesFalls(fallkennung, 'bild');
+}
+
+/**
+ * Zeichnet beide Bereiche des Verfahrens CFOP.
+ *
+ * **Eine Ausführung und nicht zwei Aufruflisten**, seit 4T-0138. Übergang und
+ * Training lesen dieselbe Quelle, `pfad.stageOverview()`, und jede Änderung,
+ * die den einen angeht, geht den anderen an: Eine freigewordene Stufe ist im
+ * Übergang eine offene und im Training eine wählbare. Zwei Listen von
+ * Aufrufstellen zu pflegen hieße, dieselbe Bedingung an zwei Orten zu führen,
+ * und eine vergessene Stelle zeigte im Training eine veraltete Freigabe. Das
+ * sähe aus wie Absicht und nicht wie ein Fehler.
+ */
+function zeigeCfop() {
+  zeigeStufe();
+  zeigeTraining();
+}
+
+/**
+ * Wechselt die angezeigte Stufe.
+ *
+ * **Der Fortschritt bleibt unberührt**, wie beim Blättern im Lernpfad. Anders
+ * als dort gibt es weder Rückweg noch Hilfe, und der Blick wird nicht
+ * ausgerichtet: Jede der vier Stufen sieht auf die Oberseite, und das ist die
+ * Ausgangsansicht.
+ */
+function waehleStufe(kennung) {
+  if (kennung === laufendeStufe) return;
+  laufendeStufe = kennung;
+  stufenRueckmeldung = null;
+  zeigeCfop();
+}
+
+/**
+ * Legt die Übungslage der laufenden Stufe auf und beginnt die Übung.
+ *
+ * **Woraus die Lage entsteht, sagt der Bestand und nicht die Stufe.**
+ * `createStageSetup` liefert für eine Stufe mit Fallmenge eine Lage samt
+ * Kennung; wo es `null` liefert, hat die Stufe keine Fallmenge, ihr Ziel ist
+ * eine Denkweise, und geübt wird am verwürfelten Würfel wie in Lektion 9.
+ * Genau darauf zielt `practice: null` aus `begin`.
+ *
+ * Die Kennung wird **nach** dem Setzen gehalten: `setze` bricht jede laufende
+ * Übung ab und räumt sie dabei mit weg.
+ */
+function beginneStufenuebung() {
+  const lage = createStageSetup(laufendeStufe, { edition: pfad.editionOf(laufendeStufe) });
+  // Eine laufende Wiedergabe hielte den Übungswürfel gesperrt und schriebe
+  // ihren nächsten Zug über die frische Lage.
+  wiedergabe.halteAn();
+  wiedergabeArt = null;
+  setze(lage === null ? applyMoves(solvedCube(), scramble()) : lage.state);
+  stufenaufgabe = lage === null ? null : { kennung: lage.kennung, blick: lage.view };
+  pfad.begin(laufendeStufe);
+  stufenRueckmeldung = { bezeichner: 'uebergang.begonnen', art: 'hinweis' };
+  zeigeWiedergabestand();
+  zeigeCfop();
+}
+
+/**
+ * Meldet, was eine gelungene Leistung an dieser Stufe bewirkt hat.
+ *
+ * Dieselbe Ordnung wie im Lernpfad: Eine Freigabe schließt den Abschluss ein,
+ * ein Abschluss die gezählte Leistung. **`frisch` unterscheidet den Abschluss
+ * von der Wiederholung** — wer eine beherrschte Stufe erneut übt, bekäme sonst
+ * bei jedem Fall erneut zu hören, die folgende sei jetzt frei.
+ */
+function meldeStufenstand(frisch, fortschritt) {
+  if (!frisch) {
+    stufenRueckmeldung = fortschritt;
+    return;
+  }
+  const naechste = STAGES.find((stufe) => stufe.requires === laufendeStufe);
+  const alleFertig = pfad.stageOverview().every((eintrag) => eintrag.completed);
+  stufenRueckmeldung = alleFertig
+    ? { bezeichner: 'uebergang.wegFertig', art: 'erfolg' }
+    : naechste
+      ? { bezeichner: 'uebergang.freigegeben', art: 'erfolg', stelle: naechste.key }
+      : { bezeichner: 'uebergang.fertig', art: 'erfolg' };
+}
+
+/**
+ * Prüft den Übungswürfel gegen das Ziel der laufenden Stufe.
+ *
+ * **Zwei Wege, weil zwei Maße.** Eine Stufe ohne Fallmenge zählt Anwendungen
+ * und geht über `check` wie eine Lektion. Eine Stufe mit Fallmenge zählt die
+ * Deckung: Steht ihr Ziel, so ist der aufgelegte Fall gelungen, und `recordCase`
+ * nimmt ihn auf. Welcher Fall das war, weiß allein die gehaltene Kennung.
+ *
+ * **Nach einem aufgenommenen Fall endet die Übung.** Ohne das meldete jeder
+ * weitere Zug denselben Fall erneut; die Menge nähme ihn zwar nicht zweimal
+ * auf, die Meldung stünde aber wieder da.
+ */
+function pruefeStufenuebung(kennung) {
+  const frisch = !pfad.isStageMastered(kennung);
+  if (stufenaufgabe === null) {
+    const ergebnis = pfad.check(kennung, verlauf.zustand());
+    if (!ergebnis.counted) return;
+    meldeStufenstand(ergebnis.completed && frisch, {
+      bezeichner: 'uebergang.geschafft',
+      art: 'erfolg',
+      werte: { getan: ergebnis.applications, verlangt: stufenAnwendungen(kennung) },
+    });
+    return;
+  }
+  // **Gemessen wird am Blick des Falls und nicht am Ziel der Stufe.** Die erste
+  // Stufe trägt zwei Blicke, und nach dem Kippen der Kanten stehen die Ecken
+  // weiterhin gedreht; ihr Ziel wäre also erst nach dem zweiten Fall erfüllt,
+  // und der erste zählte nie. Am 2026-08-27 in der Prüfung von Hand gefunden.
+  //
+  // **Der Blick allein genügt nicht, und das ist gemessen.** Hier stand bis
+  // 4T-0136 der nackte Vergleich `caseIdFor` gegen `solvedIdFor`. Er sieht den
+  // geübten Blick an und nicht, was vor ihm stand: Über alle sechzehn Fälle und
+  // je einen Grundzug auf die Übungslage bucht er zwei der 288 Lagen, beide mit
+  // zerlegten ersten beiden Schichten. `viewSolved` bucht keine davon. Weil die
+  // Deckung nach Abschnitt 11.7 des Didaktik-Konzepts die nächste Stufe
+  // freigibt, wäre das keine falsche Meldung, sondern eine falsche Freigabe.
+  const blick = stufenaufgabe.blick;
+  if (!viewSolved(verlauf.zustand(), blick)) return;
+  const fallname = titelDesFalls(stufenaufgabe.kennung);
+  const ergebnis = pfad.recordCase(kennung, stufenaufgabe.kennung);
+  if (!ergebnis.counted) return;
+  stufenaufgabe = null;
+  pfad.abort();
+  meldeStufenstand(ergebnis.mastered && frisch, {
+    bezeichner: 'uebergang.fallGeschafft',
+    art: 'erfolg',
+    werte: { fall: fallname, getan: ergebnis.done, verlangt: ergebnis.required },
+  });
+}
+
+/** Der Name eines Falls in der laufenden Sprache. */
+function titelDesFalls(fallkennung) {
+  return text(nameDesFalls(fallkennung));
+}
+
+/** Überspringt die laufende Stufe. */
+function ueberspringeStufe() {
+  if (!window.confirm(text('uebergang.ueberspringenWirklich'))) return;
+  const ergebnis = pfad.skip(laufendeStufe);
+  if (!ergebnis.ok) return;
+  const betroffen = ergebnis.affects;
+  // Der Pfad rückt beim Überspringen selbst auf die folgende Stufe vor; die
+  // Anzeige folgt ihm, statt eine zweite Meinung darüber zu haben.
+  laufendeStufe = pfad.stageResume().key;
+  stufenRueckmeldung =
+    betroffen.length > 0
+      ? { bezeichner: 'uebergang.bautAufDiese', art: 'hinweis', stellen: betroffen }
+      : null;
+  zeigeCfop();
+}
+
+/**
+ * Gibt die angezeigte Stufe frei, indem alles davor übersprungen wird.
+ *
+ * Der freie Einstieg, 4T-0207, wie `steigeInLektionEin`. **Hier wird auch der
+ * Lernpfad neu gezeichnet**, und zwingend: Wer bei einer Stufe einsteigt,
+ * überspringt die noch offenen Lektionen mit, und der Lernpfad zeigte sonst
+ * einen Stand, den es nicht mehr gibt.
+ */
+function steigeInStufeEin() {
+  if (!window.confirm(text('uebergang.einsteigenWirklich'))) return;
+  const ergebnis = pfad.skipTo(laufendeStufe);
+  if (!ergebnis.ok) return;
+  stufenRueckmeldung =
+    ergebnis.skipped.length > 0
+      ? { bezeichner: 'uebergang.eingestiegen', art: 'hinweis', stellen: ergebnis.skipped }
+      : null;
+  zeigeLektion();
+  zeigeCfop();
 }
 
 /**
@@ -1796,15 +3375,50 @@ function ueberspringeLektion() {
 function loescheFortschritt() {
   if (!window.confirm(text('ablage.loeschenWirklich'))) return;
   pfad.clear();
-  // Der Pfad steht danach am Anfang; die Anzeige folgt ihm, statt eine zweite
-  // Meinung darüber zu haben. Dieselbe Zeile wie beim Überspringen.
-  laufendeLektion = pfad.resume().key;
-  // Die alte Meldung geht mit dem alten Stand. Sie spräche sonst von einem
-  // Fortschritt, den es nicht mehr gibt, und das ist schlimmer als keine
-  // Meldung.
-  rueckmeldung = null;
-  zeigeLektion();
+  folgeDemPfad();
   zeigeHinweis('ablage.geloescht');
+}
+
+/**
+ * Zieht die Anzeige hinter einen Pfad, dessen Stand von außen ersetzt wurde.
+ *
+ * **Eine Stelle für das Löschen und das Holen**, seit 4T-0151. Beide ersetzen
+ * den Stand ganz, das eine durch den leeren, das andere durch den der Datei,
+ * und die Anzeige folgt dem Pfad, statt eine zweite Meinung darüber zu haben.
+ * Dieselbe Zeile für die Lektion wie beim Überspringen.
+ *
+ * **Die alten Meldungen gehen mit dem alten Stand.** Sie sprächen sonst von
+ * einem Fortschritt, den es nicht mehr gibt, und das ist schlimmer als keine
+ * Meldung.
+ */
+function folgeDemPfad() {
+  laufendeLektion = pfad.resume().key;
+  laufendeStufe = pfad.stageResume().key;
+  rueckmeldung = null;
+  stufenRueckmeldung = null;
+  zeigeLektion();
+  zeigeCfop();
+}
+
+/**
+ * Zieht den laufenden Stand hinter eine zurückgeholte Datei, 4T-0151.
+ *
+ * **Der Datensatz ist zu diesem Zeitpunkt schon ersetzt**, durch `uebernimm`
+ * in den Einstellungen; was hier fehlte, war der Ruf an die beiden Bestände,
+ * die ihren Stand selbst halten. Ohne ihn schrieb der Pfad beim nächsten Beginn
+ * einer Lektion seinen alten Stand über den geholten, gemessen am 2026-09-03
+ * mit einer Datei, die drei abgeschlossene Lektionen trug und danach keine
+ * mehr. **Beide Bestände lesen neu, und keiner sichert dabei**; der Stand
+ * kommt gerade aus dem Speicher.
+ */
+function folgeDerDatei() {
+  pfad.reload();
+  zeitverlauf.reload();
+  folgeDemPfad();
+  // **Der Verlauf zieht eigens nach**, 4T-0153. `folgeDemPfad` zeichnet die
+  // Bereiche des Lernens; die Zeitnahme steht in keinem Verfahren und ist
+  // deshalb dort nicht dabei.
+  zeigeZeitverlauf();
 }
 
 document.getElementById('fortschritt-loeschen').addEventListener('click', loescheFortschritt);
@@ -1822,18 +3436,50 @@ document.getElementById('fortschritt-loeschen').addEventListener('click', loesch
  */
 function pruefeUebung() {
   const uebung = pfad.running();
-  if (uebung === null || uebung !== laufendeLektion) return;
-  verarbeiteAnwendung(pfad.check(uebung, verlauf.zustand()));
+  if (uebung !== null && uebung === laufendeLektion) {
+    verarbeiteAnwendung(pfad.check(uebung, verlauf.zustand()));
+  } else if (uebung !== null && uebung === laufendeStufe) {
+    pruefeStufenuebung(uebung);
+  }
+  // **Die dritte Prüfung steht neben den beiden anderen und nicht in ihnen**,
+  // 4T-0141. Sie hängt an keiner angezeigten Stelle des Pfades, sondern an der
+  // angemeldeten Übungsaufgabe, und die führt `progress.js` getrennt von der
+  // laufenden Übung. Beide schließen sich ohnehin aus: Wer eine
+  // Trainingsaufgabe stellt, setzt den Würfel, und das beendet jede laufende
+  // Übung des Pfades.
+  pruefeTrainingsaufgabe();
+  // **Die vierte Prüfung steht neben den drei anderen**, 4T-0147, und hängt an
+  // keiner Übung: Sie meldet die Lage an den Ablauf der Zeitnahme, und der
+  // entscheidet, ob sie den Durchgang beendet. Sie steht hier und nicht in
+  // `spiele`, weil auch das Zurücknehmen und Wiederherstellen zählt; es
+  // entscheidet der Zustand des Würfels und nicht der Weg dorthin.
+  pruefeZeitnahme();
+  // **Der Übergang wird in jedem Fall neu gezeichnet, auch ohne laufende
+  // Übung.** Welcher Fall vorliegt, hängt am Würfel und nicht an der Übung; wer
+  // ohne zu üben dreht, soll den Fall wechseln sehen. Dasselbe gilt für den
+  // Lernpfad nicht: Dort hängt nichts an der Lage außer der Prüfung selbst.
+  zeigeCfop();
 }
 
 // Auch beim Start, denn der Pfad nimmt die zuletzt bearbeitete Lektion wieder
 // auf. Wer bei Lektion 2 aufgehört hat, sähe sonst beim nächsten Start auf die
 // Oberseite, während der Text von der unteren spricht. Dasselbe gilt für die
 // Zurücknahme: Wer in Lektion 8 aufgehört hat, findet sie beim nächsten Start
-// vor, statt sie erst durch einen Lektionswechsel auszulösen.
+// vor, statt sie erst durch einen Lektionswechsel auszulösen. Sie kommt seit
+// 4T-0212 mit `zeigeLektion` in der nächsten Zeile.
 richteBlickAus(laufendeLektion);
-hebeArbeitsstelleHervor(laufendeLektion);
 zeigeLektion();
+// Der Übergang wird beim Start mitgezeichnet, 4T-0121. Er ist von Anfang an
+// sichtbar, beim ersten Start mit vier gesperrten Stufen; der Blick wird für
+// ihn nicht ausgerichtet, denn jede Stufe sieht auf die Oberseite.
+zeigeCfop();
+// Und die Zeitnahme, 4T-0147. Sie steht beim Start auf «bereit» und zeigt eine
+// Uhr auf null; ein leerer Bereich sähe aus, als fehle etwas.
+zeigeZeitnahme();
+// Der Verlauf ebenso, 4T-0153. Er steht beim ersten Start mit zwei leeren Wegen
+// da und sagt das mit eigenem Wortlaut; ein Aufklapper, der erst nach dem
+// ersten Versuch etwas enthielte, sähe vorher wie ein Fehler aus.
+zeigeZeitverlauf();
 
 // --------------------------------------- Zustandseingabe, aus 4T-0067
 
@@ -1925,6 +3571,11 @@ function zeigeEingabe() {
   // Das Netz nur, solange die Eingabe läuft. Sonst gehört es dem Übungswürfel,
   // und ein Aufruf beim Aufbau überschriebe ihn mit einer leeren Eingabe.
   if (eingabeOffen) netz.zeige(eingabe.felder());
+  // **Der vorgelesene Name der Farbwahl steht hier und nicht einmal beim
+  // Aufbau**, seit 4T-0212. Dort gesetzt blieb er nach dem Wechsel auf
+  // Englisch deutsch, seit Release 1; diese Funktion läuft beim Sprachwechsel
+  // ohnehin. Gefunden im Abnahmelauf vom 2026-11-20, B9.
+  farbwahlKnoten.setAttribute('aria-label', text('eingabe.farbwahl'));
   // «Zurücknehmen» bleibt stehen und wird untätig, wie im Verlauf und wie jede
   // gesperrte Schaltfläche seit 4T-0063. Das Layout darf beim Bedienen nicht
   // springen.
@@ -2053,6 +3704,12 @@ function beschrifteFelder() {
 /** Beginnt eine Eingabe und räumt dafür die Bühne frei. */
 function beginneEingabe() {
   eingabeOffen = true;
+  hebeArbeitsstelleHervor();
+  // **Eine noch rechnende kurze Lösung wird abgebrochen**, seit 4T-0212. Sie
+  // lud sonst nach ihrem Ende eine Wiedergabe in die offene Eingabe, und die
+  // beiden schließen einander aus. Gefunden von der unabhängigen Prüfung am
+  // 2026-11-20; die Zeile meldet danach «abgebrochen», was der Wechsel auch ist.
+  if (kurzAbbruch !== null) kurzAbbruch();
   // Derselbe Schalter wie für die Einstellung, nur überstimmt er jetzt. Die
   // Halter hier von Hand zu setzen wäre eine zweite Fassung derselben Regel.
   wirke('ansicht');
@@ -2074,6 +3731,7 @@ function beginneEingabe() {
 /** Beendet die Eingabe und stellt die Bühne zurück. */
 function beendeEingabe() {
   eingabeOffen = false;
+  hebeArbeitsstelleHervor();
   netz.setzeBedienbar(false);
   eingabeFlaeche.hidden = true;
   // Der Befund geht mit der Eingabe. Ohne diese Zeile bliebe die Hervorhebung
@@ -2180,7 +3838,6 @@ document.addEventListener('keydown', (ereignis) => {
   waehleFarbe(NACH_AUGENZAHL[stelle - 1]);
 });
 
-farbwahlKnoten.setAttribute('aria-label', text('eingabe.farbwahl'));
 zeigeEingabe();
 
 // ------------------------------------------------------------- Aufbau
@@ -2192,5 +3849,9 @@ for (const name of felder.keys()) {
 wendeTexteAn(document, text);
 document.documentElement.lang = einstellungen.wert('sprache');
 
+// Drei Zustände der Ablage, in der Reihenfolge ihres Gewichts. Der zu neue
+// Stand steht vor dem ergänzten, obwohl beide einander ausschließen: Wer die
+// Reihenfolge später umstellt, soll den schwereren Fall zuerst lesen.
 if (einstellungen.speicherFehlt()) zeigeHinweis('ablage.kein');
+else if (einstellungen.istZuNeu()) zeigeHinweis('ablage.zuNeu');
 else if (einstellungen.wurdeErgaenzt()) zeigeHinweis('ablage.ergaenzt');

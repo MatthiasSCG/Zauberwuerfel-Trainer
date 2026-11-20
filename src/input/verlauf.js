@@ -12,6 +12,36 @@
 // Bindend aus der Architektur, Abschnitt 3.
 //
 // Dieses Modul ist reine Rechnung. Es kennt weder Darstellung noch Browser.
+//
+// **Der Übungswürfel führt die achtzehn Grunddrehungen und nicht die
+// vierundfünfzig.** Entschieden am 2026-08-24 in 4T-0100, und der Grund steht
+// hier und nicht allein im Task.
+//
+// Zweierlei hängt zusammen. Erstens verschieben sechsunddreißig der
+// vierundfünfzig Züge die Würfelorientierung, und zwar nicht nur die neun
+// Ganzdrehungen: Mittelschicht und Doppelschicht enthalten die mittlere
+// Schicht und werden deshalb über den ganzen Würfel gerechnet. Sobald der
+// Übungswürfel einen davon ausführt, ist der Modellbezug nicht mehr der Bezug
+// des Anwenders, und jede Auskunft, die auf diesem Zustand beruht, nennt
+// Buchstaben, die er auf dem Bildschirm nicht wiederfindet: die Lernlösung,
+// die Kurzlösung und die Hilfe des Lernpfads. Das wäre keine Unschönheit,
+// sondern eine falsche Anleitung.
+//
+// Zweitens hat der Übungswürfel für diese Züge keine Quelle. Die Tastatur
+// erreicht achtzehn der vierundfünfzig; die achtzehn Doppelschichten sind
+// nicht nachrüstbar, ohne die Bedienung neu zu regeln, denn sie unterscheiden
+// sich von den Flächendrehungen allein durch Kleinschreibung, und die
+// Umschalttaste ist bereits die Gegenrichtung.
+//
+// **Entweder beides oder keines von beiden.** Eine mitgeführte Orientierung
+// ohne erweiterte Bedienung wäre toter Code, eine erweiterte Bedienung ohne
+// umbenannte Auskünfte eine falsche Anleitung. Der Bedarf entsteht sichtbar
+// mit dem Training von Erkennung und Ausführung in 2A-0019; dort gehört die
+// Entscheidung neu gestellt, und zwar mit beiden Hälften zusammen.
+//
+// **Die Wiedergabe trägt die neuen Züge dagegen seit 4T-0100.** Sie zeigt eine
+// Folge, ohne den Übungswürfel anzufassen, und läuft deshalb nicht in dieses
+// Problem hinein.
 
 import { applyMove, inverseMove, solvedCube, toFacelets } from '../core/cube.js';
 import { validateFacelets } from '../core/validate.js';
